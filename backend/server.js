@@ -25,12 +25,59 @@ if (!LEONARDO_API_KEY) {
 }
 
 app.use(cors({ origin: "*" }));
-app.use(express.json());
+app.use(express.json({ limit: "25mb" })); // allow large base64 payloads
+
+// ─── Helper: upload a base64 image to Leonardo as an init-image ──────────────
+// Returns the init_image id to use in a generation request.
+async function uploadInitImage(base64DataUrl, apiKey) {
+  const matches = base64DataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+  if (!matches) throw new Error("Invalid image data URL");
+  const mimeType = matches[1];
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, "base64");
+  const ext = mimeType.includes("png") ? "png" : "jpg";
+
+  // Step 1 — ask Leonardo for a presigned S3 upload URL
+  const initRes = await fetch(`${LEONARDO_BASE}/init-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ extension: ext }),
+  });
+  const initData = await initRes.json();
+  const { id, url, fields } = initData.uploadInitImage;
+
+  // Step 2 — upload the image to S3 using the presigned URL
+  const form = new FormData();
+  const parsedFields = JSON.parse(fields);
+  for (const [k, v] of Object.entries(parsedFields)) form.append(k, v);
+  form.append("file", new Blob([buffer], { type: mimeType }));
+  await fetch(url, { method: "POST", body: form });
+
+  return id;
+}
 
 // ─── POST /api/generate ─────────────────────────────────────────────────────
 // Starts a Leonardo generation job and returns the generationId.
+// Real Leonardo model IDs — fallback if a placeholder or unknown ID is passed
+const MODEL_ID_MAP = {
+  "phoenix-1.0":        "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",
+  "flux-kontext":       "28aeddf8-bd19-4803-80fc-79602d1a9989",
+  "flux-dev":           "b2614463-296c-462a-9586-aafdb8f00e36",
+  "lucid-realism":      "05ce0082-2d80-4a2d-8653-4d1c85e2418e",
+};
+const DEFAULT_MODEL = "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"; // Phoenix 1.0
+
+function resolveModelId(id) {
+  // If it's a known short key, map it
+  if (MODEL_ID_MAP[id]) return MODEL_ID_MAP[id];
+  // If it looks like a real UUID (8-4-4-4-12), use it as-is
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return id;
+  // Otherwise it's a placeholder — fall back to default
+  return DEFAULT_MODEL;
+}
+
 app.post("/api/generate", async (req, res) => {
-  const { modelId, prompt, width, height, num_images = 1, quality } = req.body;
+  const { modelId, prompt, width, height, num_images = 1, quality, refImages } = req.body;
   const apiKey = resolveKey(req);
 
   if (!prompt) {
@@ -45,6 +92,18 @@ app.post("/api/generate", async (req, res) => {
   };
   const qs = qualitySettings[quality] || qualitySettings.medium;
 
+  // Upload first reference image as init-image if provided
+  let init_image_id = null;
+  if (refImages && refImages.length > 0) {
+    try {
+      init_image_id = await uploadInitImage(refImages[0], apiKey);
+      console.log(`✓ Init image uploaded: ${init_image_id}`);
+    } catch (e) {
+      console.error("Init image upload failed:", e.message);
+      // Non-fatal — generate without the reference image
+    }
+  }
+
   try {
     const response = await fetch(`${LEONARDO_BASE}/generations`, {
       method: "POST",
@@ -53,12 +112,13 @@ app.post("/api/generate", async (req, res) => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        modelId: modelId || "b24e16ff-06e3-43eb-8d33-4416c2d75876",
+        modelId: resolveModelId(modelId),
         prompt,
-        width: width || 1024,
-        height: height || 1024,
+        width:      width  || 1024,
+        height:     height || 1024,
         num_images: Math.min(num_images, 4),
         presetStyle: "DYNAMIC",
+        ...(init_image_id ? { init_image_id, init_strength: 0.45 } : {}),
         ...qs,
       }),
     });

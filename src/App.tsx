@@ -3,12 +3,12 @@ import { upload } from "@canva/asset";
 import { addElementAtCursor } from "@canva/design";
 import "./styles.css";
 
-// Each model defines how many reference images it accepts
+// Each model maps to a real Leonardo model ID
 const MODELS = [
-  { id: "gpt-image-2-placeholder",    name: "GPT Image 2",     maxRefs: 6 },
-  { id: "nano-banana-pro-placeholder", name: "Nano Banana Pro", maxRefs: 6 },
-  { id: "seedream-4-5-placeholder",    name: "Seedream 4.5",    maxRefs: 6 },
-  { id: "flux-2-pro-placeholder",      name: "Flux.2 Pro",      maxRefs: 4 },
+  { id: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", name: "Phoenix 1.0",      maxRefs: 6 },
+  { id: "28aeddf8-bd19-4803-80fc-79602d1a9989", name: "FLUX.1 Kontext",    maxRefs: 6 },
+  { id: "b2614463-296c-462a-9586-aafdb8f00e36", name: "Flux Dev",          maxRefs: 4 },
+  { id: "05ce0082-2d80-4a2d-8653-4d1c85e2418e", name: "Lucid Realism",     maxRefs: 4 },
 ];
 
 const STANDARD_SIZES = [
