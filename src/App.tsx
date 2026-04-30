@@ -1,35 +1,40 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { upload } from "@canva/asset";
 import { addElementAtCursor } from "@canva/design";
 import "./styles.css";
 
-// Leonardo model options
+// Each model defines how many reference images it accepts
 const MODELS = [
-  { id: "b24e16ff-06e3-43eb-8d33-4416c2d75876", name: "Leonardo Phoenix" },
-  { id: "aa77f04e-3eec-4034-9c07-d0f619684628", name: "Leonardo Diffusion XL" },
-  { id: "2067ae52-33fd-4a82-bb92-c2c55e7d2786", name: "AlbedoBase XL" },
-  { id: "5c232a9e-9061-4777-980a-ddc8e65647c6", name: "DreamShaper v7" },
-  { id: "e316348f-7773-490e-adcd-46757c738eb9", name: "Absolute Reality v1.6" },
+  { id: "gpt-image-2-placeholder",    name: "GPT Image 2",     maxRefs: 6 },
+  { id: "nano-banana-pro-placeholder", name: "Nano Banana Pro", maxRefs: 6 },
+  { id: "seedream-4-5-placeholder",    name: "Seedream 4.5",    maxRefs: 6 },
+  { id: "flux-2-pro-placeholder",      name: "Flux.2 Pro",      maxRefs: 4 },
 ];
 
 const STANDARD_SIZES = [
-  { label: "1:1", w: 1024, h: 1024 },
-  { label: "2:3", w: 848, h: 1264 },
-  { label: "3:2", w: 1264, h: 848 },
-  { label: "16:9", w: 1376, h: 768 },
-  { label: "4:3", w: 1200, h: 896 },
-  { label: "9:16", w: 768, h: 1376 },
+  { label: "1:1",  w: 1024, h: 1024 },
+  { label: "2:3",  w: 848,  h: 1264 },
+  { label: "3:2",  w: 1264, h: 848  },
+  { label: "16:9", w: 1376, h: 768  },
+  { label: "4:3",  w: 1200, h: 896  },
+  { label: "9:16", w: 768,  h: 1376 },
 ];
 
 const SOCIAL_SIZES = [
-  { label: "Instagram", w: 928, h: 1152 },
-  { label: "TikTok", w: 768, h: 1376 },
-  { label: "Twitter", w: 1200, h: 896 },
-  { label: "Facebook", w: 1376, h: 768 },
+  { label: "Instagram", w: 928,  h: 1152 },
+  { label: "TikTok",    w: 768,  h: 1376 },
+  { label: "Twitter",   w: 1200, h: 896  },
+  { label: "Facebook",  w: 1376, h: 768  },
 ];
 
 const QUALITY_OPTIONS = ["low", "medium", "high"] as const;
 type Quality = typeof QUALITY_OPTIONS[number];
+
+interface RefImage {
+  id: string;
+  dataUrl: string;
+  name: string;
+}
 
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 
@@ -43,21 +48,74 @@ async function insertIntoCanva(url: string, width: number, height: number) {
     height,
     aiDisclosure: "app_generated",
   });
-  await addElementAtCursor({ type: "image", ref: asset.ref, altText: { text: "AI generated image", decorative: false } });
+  await addElementAtCursor({
+    type: "image",
+    ref: asset.ref,
+    altText: { text: "AI generated image", decorative: false },
+  });
 }
 
 export function App() {
-  const [modelId, setModelId] = useState(MODELS[0].id);
-  const [quality, setQuality] = useState<Quality>("medium");
-  const [count, setCount] = useState(1);
-  const [width, setWidth] = useState(1024);
-  const [height, setHeight] = useState(1024);
-  const [prompt, setPrompt] = useState("");
+  const [modelId, setModelId]           = useState(MODELS[0].id);
+  const [quality, setQuality]           = useState<Quality>("medium");
+  const [count, setCount]               = useState(1);
+  const [width, setWidth]               = useState(1024);
+  const [height, setHeight]             = useState(1024);
+  const [prompt, setPrompt]             = useState("");
   const [activePreset, setActivePreset] = useState("1:1");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus]             = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls]   = useState<string[]>([]);
+  const [error, setError]               = useState<string | null>(null);
+  const [refImages, setRefImages]       = useState<RefImage[]>([]);
+  const [refWarning, setRefWarning]     = useState<string | null>(null);
+  const fileInputRef                    = useRef<HTMLInputElement>(null);
+
+  const currentModel = MODELS.find((m) => m.id === modelId)!;
+
+  // When model changes, trim refs if the new model allows fewer
+  const handleModelChange = useCallback((newId: string) => {
+    const newModel = MODELS.find((m) => m.id === newId)!;
+    setModelId(newId);
+    setRefWarning(null);
+    setRefImages((prev) => {
+      if (prev.length > newModel.maxRefs) {
+        setRefWarning(
+          `${newModel.name} supports up to ${newModel.maxRefs} reference images. ${prev.length - newModel.maxRefs} image${prev.length - newModel.maxRefs > 1 ? "s were" : " was"} removed.`
+        );
+        return prev.slice(0, newModel.maxRefs);
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleRefUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = currentModel.maxRefs - refImages.length;
+    const toAdd = files.slice(0, remaining);
+
+    toAdd.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setRefImages((prev) => {
+          if (prev.length >= currentModel.maxRefs) return prev;
+          return [
+            ...prev,
+            { id: crypto.randomUUID(), dataUrl: ev.target!.result as string, name: file.name },
+          ];
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // reset so the same file can be re-added if removed
+    e.target.value = "";
+  }, [refImages.length, currentModel.maxRefs]);
+
+  const removeRef = useCallback((id: string) => {
+    setRefImages((prev) => prev.filter((r) => r.id !== id));
+    setRefWarning(null);
+  }, []);
 
   const selectPreset = useCallback((label: string, w: number, h: number) => {
     setActivePreset(label);
@@ -87,15 +145,25 @@ export function App() {
       const genRes = await fetch(`${BACKEND_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modelId, prompt: prompt.trim(), width, height, num_images: count, quality }),
+        body: JSON.stringify({
+          modelId,
+          prompt: prompt.trim(),
+          width,
+          height,
+          num_images: count,
+          quality,
+          refImages: refImages.map((r) => r.dataUrl),
+        }),
       });
-      if (!genRes.ok) { const e = await genRes.json().catch(() => ({})); throw new Error(e.message || `Error ${genRes.status}`); }
+      if (!genRes.ok) {
+        const e = await genRes.json().catch(() => ({}));
+        throw new Error(e.message || `Error ${genRes.status}`);
+      }
       const { generationId } = await genRes.json();
       setStatus("Generating... (10–30s)");
       const urls = await pollForImages(generationId);
       setPreviewUrls(urls);
-      setStatus(`Done! Adding to slide...`);
-      // Auto-insert first image
+      setStatus("Done! Adding to slide...");
       try {
         await insertIntoCanva(urls[0], width, height);
         setStatus("✓ Image added to your slide!");
@@ -108,7 +176,7 @@ export function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [modelId, prompt, width, height, count, quality]);
+  }, [modelId, prompt, width, height, count, quality, refImages]);
 
   const handleAddToSlide = async (url: string) => {
     setIsGenerating(true);
@@ -125,21 +193,30 @@ export function App() {
 
   return (
     <div className="app">
+
+      {/* Header */}
       <div className="header">
         <div className="logo">
-          <span className="logo-icon">⚡</span>
-          <span className="logo-text">Leonardo</span>
-          <span className="logo-badge">AI</span>
+          <svg className="logo-svg" viewBox="0 0 250 267" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M238.535 0C241.97 0 244.192 3.63035 242.629 6.68935L213.985 62.7452C212.422 65.8042 214.644 69.4346 218.079 69.4346H229.417C232.821 69.4346 235.044 73.0045 233.543 76.0593L193.858 156.832C193.21 158.15 193.231 159.697 193.914 160.997L249.133 266.146C249.136 266.151 249.13 266.157 249.125 266.154C249.124 266.154 249.123 266.153 249.122 266.153H58.2702C54.5257 266.153 52.3518 261.916 54.5356 258.875L87.2882 213.255C89.472 210.213 87.2981 205.977 83.5536 205.977H25.9329C22.703 205.977 20.48 202.733 21.645 199.721L46.6378 135.092C47.8028 132.079 45.5798 128.836 42.3499 128.836H4.60343C1.17468 128.836 -1.04751 125.218 0.502821 122.16L61.1532 2.51866C61.9364 0.973637 63.5216 0 65.2538 0H238.535ZM116.313 69.6123C97.1988 69.6125 80.6022 79.6743 72.2754 94.4548C71.567 95.7123 71.5673 97.2465 72.2763 98.5036C80.6035 113.268 97.1995 123.337 116.313 123.337C135.426 123.337 152.023 113.276 160.358 98.5046C161.068 97.247 161.068 95.7118 160.359 94.4539C152.031 79.6819 135.426 69.6123 116.313 69.6123ZM116.314 80.207C125.824 80.207 133.53 87.3984 133.531 96.2822C133.531 105.166 125.824 112.367 116.314 112.367C106.803 112.367 99.0979 105.175 99.0979 96.2822C99.0981 87.3892 106.804 80.2072 116.314 80.207Z" fill="#6E60EE"/>
+          </svg>
+          <div className="logo-text-group">
+            <span className="logo-text">Prism</span>
+            <span className="logo-badge">by Leonardo.AI</span>
+          </div>
         </div>
+        <p className="header-sub">Top image models at your command, right inside Canva.</p>
       </div>
 
+      {/* Model */}
       <div className="section">
         <label className="label">MODEL</label>
-        <select className="select" value={modelId} onChange={(e) => setModelId(e.target.value)} disabled={isGenerating}>
+        <select className="select" value={modelId} onChange={(e) => handleModelChange(e.target.value)} disabled={isGenerating}>
           {MODELS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </div>
 
+      {/* Quality + Count */}
       <div className="row-3col">
         <div className="section">
           <label className="label">QUALITY</label>
@@ -151,10 +228,16 @@ export function App() {
         </div>
         <div className="section">
           <label className="label">COUNT</label>
-          <input className="count-input" type="number" min={1} max={4} value={count} onChange={(e) => setCount(Math.max(1, Math.min(4, +e.target.value)))} disabled={isGenerating} />
+          <select className="count-select" value={count} onChange={(e) => setCount(+e.target.value)} disabled={isGenerating}>
+            <option value={1}>1 image</option>
+            <option value={2}>2 images</option>
+            <option value={3}>3 images</option>
+            <option value={4}>4 images</option>
+          </select>
         </div>
       </div>
 
+      {/* Size presets */}
       <div className="section">
         <label className="label">STANDARD</label>
         <div className="preset-grid">
@@ -173,6 +256,7 @@ export function App() {
         </div>
       </div>
 
+      {/* Width / Height sliders */}
       <div className="section">
         <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
         <input type="range" min={512} max={1536} step={64} value={width} onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
@@ -184,6 +268,49 @@ export function App() {
         <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
       </div>
 
+      {/* Reference images */}
+      <div className="section">
+        <div className="refs-header">
+          <label className="label">REFERENCE IMAGES</label>
+          <span className="refs-counter">{refImages.length}/{currentModel.maxRefs}</span>
+        </div>
+
+        {refWarning && <div className="ref-warning">{refWarning}</div>}
+
+        {refImages.length > 0 && (
+          <div className="refs-grid">
+            {refImages.map((r) => (
+              <div key={r.id} className="ref-item">
+                <img src={r.dataUrl} alt={r.name} className="ref-thumb" />
+                <button className="ref-remove" onClick={() => removeRef(r.id)} disabled={isGenerating} title="Remove">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {refImages.length < currentModel.maxRefs && (
+          <>
+            <button
+              className="refs-add-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isGenerating}
+            >
+              + Add reference image
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={handleRefUpload}
+            />
+          </>
+        )}
+        <div className="refs-hint">Optional — guide the style or composition of the output</div>
+      </div>
+
+      {/* Prompt */}
       <div className="section">
         <label className="label">PROMPT</label>
         <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} />
