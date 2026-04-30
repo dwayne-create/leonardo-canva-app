@@ -38,6 +38,7 @@ interface RefImage {
 
 interface LibraryImage {
   id: string;
+  generationId: string;
   url: string;
   prompt: string;
   width: number;
@@ -46,6 +47,7 @@ interface LibraryImage {
 }
 
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
+const API_KEY_STORAGE = "prism_leo_api_key";
 
 async function insertIntoCanva(url: string, width: number, height: number) {
   const asset = await upload({
@@ -65,7 +67,7 @@ async function insertIntoCanva(url: string, width: number, height: number) {
 }
 
 export function App() {
-  const [tab, setTab]                   = useState<"generate" | "library">("generate");
+  const [tab, setTab]                   = useState<"generate" | "library" | "settings">("generate");
   const [modelId, setModelId]           = useState(MODELS[0].id);
   const [quality, setQuality]           = useState<Quality>("medium");
   const [count, setCount]               = useState(1);
@@ -81,13 +83,36 @@ export function App() {
   const [refWarning, setRefWarning]     = useState<string | null>(null);
   const fileInputRef                    = useRef<HTMLInputElement>(null);
 
+  // API key state
+  const [apiKey, setApiKey]           = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) || "");
+  const [apiKeyInput, setApiKeyInput] = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) || "");
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+
   // Library state
   const [libraryImages, setLibraryImages]       = useState<LibraryImage[]>([]);
   const [libraryLoading, setLibraryLoading]     = useState(false);
   const [libraryError, setLibraryError]         = useState<string | null>(null);
   const [libraryAddingId, setLibraryAddingId]   = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
+  const [deletingId, setDeletingId]             = useState<string | null>(null);
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
+
+  // Build headers with optional user API key
+  const buildHeaders = useCallback((extra: Record<string, string> = {}) => {
+    const h: Record<string, string> = { ...extra };
+    if (apiKey.trim()) h["x-leo-api-key"] = apiKey.trim();
+    return h;
+  }, [apiKey]);
+
+  // Save API key
+  const handleSaveApiKey = () => {
+    const trimmed = apiKeyInput.trim();
+    setApiKey(trimmed);
+    localStorage.setItem(API_KEY_STORAGE, trimmed);
+    setApiKeySaved(true);
+    setTimeout(() => setApiKeySaved(false), 2000);
+  };
 
   // When model changes, trim refs if the new model allows fewer
   const handleModelChange = useCallback((newId: string) => {
@@ -109,7 +134,9 @@ export function App() {
     setLibraryLoading(true);
     setLibraryError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/library?limit=40`);
+      const res = await fetch(`${BACKEND_URL}/api/library?limit=40`, {
+        headers: buildHeaders(),
+      });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.message || `Error ${res.status}`);
@@ -121,9 +148,8 @@ export function App() {
     } finally {
       setLibraryLoading(false);
     }
-  }, []);
+  }, [buildHeaders]);
 
-  // Load library whenever the tab is opened
   useEffect(() => {
     if (tab === "library") fetchLibrary();
   }, [tab, fetchLibrary]);
@@ -136,6 +162,28 @@ export function App() {
       setLibraryError("Couldn't add to slide: " + err.message);
     } finally {
       setLibraryAddingId(null);
+    }
+  };
+
+  const handleDeleteConfirmed = async () => {
+    const img = libraryImages.find((i) => i.id === confirmDeleteId);
+    if (!img) return;
+    setDeletingId(img.id);
+    setConfirmDeleteId(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/generation/${img.generationId}`, {
+        method: "DELETE",
+        headers: buildHeaders(),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.message || `Error ${res.status}`);
+      }
+      setLibraryImages((prev) => prev.filter((i) => i.generationId !== img.generationId));
+    } catch (err: any) {
+      setLibraryError("Couldn't delete: " + err.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -157,8 +205,6 @@ export function App() {
       };
       reader.readAsDataURL(file);
     });
-
-    // reset so the same file can be re-added if removed
     e.target.value = "";
   }, [refImages.length, currentModel.maxRefs]);
 
@@ -176,7 +222,9 @@ export function App() {
   const pollForImages = async (generationId: string): Promise<string[]> => {
     for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 3000));
-      const pollRes = await fetch(`${BACKEND_URL}/api/generation/${generationId}`);
+      const pollRes = await fetch(`${BACKEND_URL}/api/generation/${generationId}`, {
+        headers: buildHeaders(),
+      });
       if (!pollRes.ok) continue;
       const data = await pollRes.json();
       const gen = data.generations_by_pk;
@@ -194,7 +242,7 @@ export function App() {
     try {
       const genRes = await fetch(`${BACKEND_URL}/api/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           modelId,
           prompt: prompt.trim(),
@@ -226,7 +274,7 @@ export function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [modelId, prompt, width, height, count, quality, refImages]);
+  }, [modelId, prompt, width, height, count, quality, refImages, buildHeaders]);
 
   const handleAddToSlide = async (url: string) => {
     setIsGenerating(true);
@@ -243,6 +291,20 @@ export function App() {
 
   return (
     <div className="app">
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteId && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-title">Delete image?</div>
+            <p className="modal-body">This will permanently delete this image from Prism and your Leonardo account. This cannot be undone.</p>
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+              <button className="modal-delete" onClick={handleDeleteConfirmed}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="header">
@@ -261,10 +323,46 @@ export function App() {
       {/* Tab switcher */}
       <div className="tab-switcher">
         <button className={`tab-btn ${tab === "generate" ? "active" : ""}`} onClick={() => setTab("generate")}>Generate</button>
-        <button className={`tab-btn ${tab === "library"  ? "active" : ""}`} onClick={() => setTab("library")}>My Library</button>
+        <button className={`tab-btn ${tab === "library"  ? "active" : ""}`} onClick={() => setTab("library")}>Library</button>
+        <button className={`tab-btn ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>⚙︎</button>
       </div>
 
-      {tab === "library" ? (
+      {/* ── SETTINGS TAB ── */}
+      {tab === "settings" && (
+        <div className="settings-section">
+          <div className="section">
+            <label className="label">YOUR LEONARDO API KEY</label>
+            <input
+              type="password"
+              className="api-key-input"
+              placeholder="Paste your API key here..."
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+            />
+            <button className={`save-key-btn ${apiKeySaved ? "saved" : ""}`} onClick={handleSaveApiKey}>
+              {apiKeySaved ? "✓ Saved!" : "Save Key"}
+            </button>
+            {apiKey && <div className="key-status">✓ API key active — your generations use your own Leonardo account.</div>}
+          </div>
+
+          <div className="how-to">
+            <div className="how-to-title">How to get your Leonardo API key</div>
+            <ol className="how-to-list">
+              <li>Go to <strong>leonardo.ai</strong> and sign up for a free account (or log in).</li>
+              <li>Once logged in, click your <strong>profile icon</strong> in the top-right corner.</li>
+              <li>Select <strong>"User Settings"</strong> from the dropdown menu.</li>
+              <li>Scroll down to the <strong>"API Key"</strong> section.</li>
+              <li>Click <strong>"Create New Key"</strong> and give it a name (e.g. "Prism").</li>
+              <li>Copy the key that appears — it starts with a long string of letters and numbers.</li>
+              <li>Paste it into the field above and tap <strong>Save Key</strong>.</li>
+            </ol>
+            <div className="how-to-note">Your key is stored only on your device and is never shared with anyone.</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LIBRARY TAB ── */}
+      {tab === "library" && (
         <div className="library-section">
           <div className="library-toolbar">
             <span className="label">RECENT IMAGES</span>
@@ -287,7 +385,17 @@ export function App() {
             <div className="library-grid">
               {libraryImages.map((img) => (
                 <div key={img.id} className="library-item">
-                  <img src={img.url} alt={img.prompt} className="library-thumb" title={img.prompt} />
+                  <div className="library-thumb-wrap">
+                    <img src={img.url} alt={img.prompt} className="library-thumb" title={img.prompt} />
+                    <button
+                      className="library-trash"
+                      onClick={() => setConfirmDeleteId(img.id)}
+                      disabled={deletingId === img.id}
+                      title="Delete image"
+                    >
+                      {deletingId === img.id ? "…" : "🗑"}
+                    </button>
+                  </div>
                   <div className="library-prompt">{img.prompt}</div>
                   <button
                     className="add-btn"
@@ -301,9 +409,11 @@ export function App() {
             </div>
           )}
         </div>
-      ) : (
-      <>
+      )}
 
+      {/* ── GENERATE TAB ── */}
+      {tab === "generate" && (
+      <>
       {/* Model */}
       <div className="section">
         <label className="label">MODEL</label>
@@ -386,21 +496,10 @@ export function App() {
 
         {refImages.length < currentModel.maxRefs && (
           <>
-            <button
-              className="refs-add-btn"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isGenerating}
-            >
+            <button className="refs-add-btn" onClick={() => fileInputRef.current?.click()} disabled={isGenerating}>
               + Add reference image
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              style={{ display: "none" }}
-              onChange={handleRefUpload}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleRefUpload} />
           </>
         )}
         <div className="refs-hint">Optional — guide the style or composition of the output</div>

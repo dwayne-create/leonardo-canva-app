@@ -14,6 +14,11 @@ const PORT = process.env.BACKEND_PORT || 3001;
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const LEONARDO_BASE = "https://cloud.leonardo.ai/api/rest/v1";
 
+// Helper: resolve the API key to use — user-supplied key takes priority
+function resolveKey(req) {
+  return req.headers["x-leo-api-key"] || LEONARDO_API_KEY;
+}
+
 if (!LEONARDO_API_KEY) {
   console.error("❌  LEONARDO_API_KEY is missing. Copy .env.example to .env and add your key.");
   process.exit(1);
@@ -26,6 +31,7 @@ app.use(express.json());
 // Starts a Leonardo generation job and returns the generationId.
 app.post("/api/generate", async (req, res) => {
   const { modelId, prompt, width, height, num_images = 1, quality } = req.body;
+  const apiKey = resolveKey(req);
 
   if (!prompt) {
     return res.status(400).json({ message: "prompt is required" });
@@ -44,7 +50,7 @@ app.post("/api/generate", async (req, res) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${LEONARDO_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         modelId: modelId || "b24e16ff-06e3-43eb-8d33-4416c2d75876",
@@ -83,10 +89,11 @@ app.post("/api/generate", async (req, res) => {
 // Polls Leonardo for the status of a generation job.
 app.get("/api/generation/:id", async (req, res) => {
   const { id } = req.params;
+  const apiKey = resolveKey(req);
 
   try {
     const response = await fetch(`${LEONARDO_BASE}/generations/${id}`, {
-      headers: { Authorization: `Bearer ${LEONARDO_API_KEY}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
 
     const data = await response.json();
@@ -112,11 +119,12 @@ app.get("/api/generation/:id", async (req, res) => {
 app.get("/api/library", async (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit  || "40", 10), 100);
   const offset = parseInt(req.query.offset || "0", 10);
+  const apiKey = resolveKey(req);
 
   try {
     // Step 1: resolve user id from the API key
     const meRes = await fetch(`${LEONARDO_BASE}/me`, {
-      headers: { Authorization: `Bearer ${LEONARDO_API_KEY}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
     const meData = await meRes.json();
     const userId = meData?.user_details?.[0]?.user?.id;
@@ -128,7 +136,7 @@ app.get("/api/library", async (req, res) => {
     // Step 2: fetch generation history
     const histRes = await fetch(
       `${LEONARDO_BASE}/generations/user/${userId}?offset=${offset}&limit=${limit}`,
-      { headers: { Authorization: `Bearer ${LEONARDO_API_KEY}` } }
+      { headers: { Authorization: `Bearer ${apiKey}` } }
     );
     const histData = await histRes.json();
 
@@ -142,13 +150,14 @@ app.get("/api/library", async (req, res) => {
     for (const gen of generations) {
       for (const img of gen.generated_images || []) {
         images.push({
-          id:        img.id,
-          url:       img.url,
-          prompt:    gen.prompt,
-          width:     gen.width,
-          height:    gen.height,
-          modelId:   gen.modelId,
-          createdAt: gen.createdAt,
+          id:           img.id,
+          generationId: gen.id,
+          url:          img.url,
+          prompt:       gen.prompt,
+          width:        gen.width,
+          height:       gen.height,
+          modelId:      gen.modelId,
+          createdAt:    gen.createdAt,
         });
       }
     }
@@ -157,6 +166,31 @@ app.get("/api/library", async (req, res) => {
     return res.json({ images, total: images.length });
   } catch (err) {
     console.error("Library error:", err);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── DELETE /api/generation/:id ──────────────────────────────────────────────
+// Permanently deletes a generation (and all its images) from Leonardo.
+app.delete("/api/generation/:id", async (req, res) => {
+  const { id } = req.params;
+  const apiKey = resolveKey(req);
+
+  try {
+    const response = await fetch(`${LEONARDO_BASE}/generations/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ message: data?.error || "Leonardo API error" });
+    }
+
+    console.log(`✓ Deleted generation: ${id}`);
+    return res.json({ deleted: true });
+  } catch (err) {
+    console.error("Delete error:", err);
     return res.status(500).json({ message: err.message });
   }
 });
