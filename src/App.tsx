@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { upload } from "@canva/asset";
-import { addNativeElement } from "@canva/design";
+import { addElementAtCursor } from "@canva/design";
 import "./styles.css";
 
 // Leonardo model options
@@ -43,7 +43,7 @@ async function insertIntoCanva(url: string, width: number, height: number) {
     height,
     aiDisclosure: "app_generated",
   });
-  await addNativeElement({ type: "image", ref: asset.ref });
+  await addElementAtCursor({ type: "image", ref: asset.ref, altText: { text: "AI generated image", decorative: false } });
 }
 
 export function App() {
