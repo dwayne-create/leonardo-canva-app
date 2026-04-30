@@ -530,6 +530,16 @@ body {
   color: #1a1a2e;
 }
 
+.tab-btn-gear {
+  flex: 0 0 36px;
+  font-size: 15px;
+  color: #9ca3af;
+}
+
+.tab-btn-gear.active {
+  color: #7c3aed;
+}
+
 /* Library */
 .library-section {
   display: flex;
@@ -707,6 +717,28 @@ body {
   background: #dc2626;
 }
 
+/* Onboarding banner */
+.onboarding-banner {
+  background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(79,70,229,0.06));
+  border: 1px solid rgba(124,58,237,0.15);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.onboarding-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 5px;
+}
+
+.onboarding-sub {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* Settings */
 .settings-section {
   display: flex;
@@ -752,6 +784,11 @@ body {
 
 .save-key-btn.saved {
   background: #10b981;
+}
+
+.save-key-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .key-status {

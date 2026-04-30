@@ -67,7 +67,9 @@ async function insertIntoCanva(url: string, width: number, height: number) {
 }
 
 export function App() {
-  const [tab, setTab]                   = useState<"generate" | "library" | "settings">("generate");
+  const [tab, setTab]                   = useState<"generate" | "library" | "settings">(() =>
+    localStorage.getItem(API_KEY_STORAGE) ? "generate" : "settings"
+  );
   const [modelId, setModelId]           = useState(MODELS[0].id);
   const [quality, setQuality]           = useState<Quality>("medium");
   const [count, setCount]               = useState(1);
@@ -111,7 +113,10 @@ export function App() {
     setApiKey(trimmed);
     localStorage.setItem(API_KEY_STORAGE, trimmed);
     setApiKeySaved(true);
-    setTimeout(() => setApiKeySaved(false), 2000);
+    setTimeout(() => {
+      setApiKeySaved(false);
+      setTab("generate");
+    }, 1000);
   };
 
   // When model changes, trim refs if the new model allows fewer
@@ -324,39 +329,51 @@ export function App() {
       <div className="tab-switcher">
         <button className={`tab-btn ${tab === "generate" ? "active" : ""}`} onClick={() => setTab("generate")}>Generate</button>
         <button className={`tab-btn ${tab === "library"  ? "active" : ""}`} onClick={() => setTab("library")}>Library</button>
-        <button className={`tab-btn ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>⚙︎</button>
+        <button className={`tab-btn tab-btn-gear ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")} title="API Settings">⚙︎</button>
       </div>
 
       {/* ── SETTINGS TAB ── */}
       {tab === "settings" && (
         <div className="settings-section">
+
+          {!apiKey && (
+            <div className="onboarding-banner">
+              <div className="onboarding-title">Welcome to Prism 👋</div>
+              <p className="onboarding-sub">Before you start generating, connect your Leonardo account. This only takes 2 minutes and you only do it once.</p>
+            </div>
+          )}
+
           <div className="section">
-            <label className="label">YOUR LEONARDO API KEY</label>
+            <label className="label">{apiKey ? "UPDATE API KEY" : "STEP 1 — PASTE YOUR API KEY"}</label>
             <input
               type="password"
               className="api-key-input"
-              placeholder="Paste your API key here..."
+              placeholder="Paste your Leonardo API key here..."
               value={apiKeyInput}
               onChange={(e) => setApiKeyInput(e.target.value)}
             />
-            <button className={`save-key-btn ${apiKeySaved ? "saved" : ""}`} onClick={handleSaveApiKey}>
-              {apiKeySaved ? "✓ Saved!" : "Save Key"}
+            <button
+              className={`save-key-btn ${apiKeySaved ? "saved" : ""}`}
+              onClick={handleSaveApiKey}
+              disabled={!apiKeyInput.trim()}
+            >
+              {apiKeySaved ? "✓ Saved! Taking you to Generate..." : apiKey ? "Update Key" : "Save & Start Generating →"}
             </button>
-            {apiKey && <div className="key-status">✓ API key active — your generations use your own Leonardo account.</div>}
+            {apiKey && <div className="key-status">✓ Key connected — you're all set.</div>}
           </div>
 
           <div className="how-to">
-            <div className="how-to-title">How to get your Leonardo API key</div>
+            <div className="how-to-title">{apiKey ? "How to get a new key" : "How to get your API key from Leonardo"}</div>
             <ol className="how-to-list">
               <li>Go to <strong>leonardo.ai</strong> and sign up for a free account (or log in).</li>
               <li>Once logged in, click your <strong>profile icon</strong> in the top-right corner.</li>
               <li>Select <strong>"User Settings"</strong> from the dropdown menu.</li>
               <li>Scroll down to the <strong>"API Key"</strong> section.</li>
-              <li>Click <strong>"Create New Key"</strong> and give it a name (e.g. "Prism").</li>
-              <li>Copy the key that appears — it starts with a long string of letters and numbers.</li>
-              <li>Paste it into the field above and tap <strong>Save Key</strong>.</li>
+              <li>Click <strong>"Create New Key"</strong> and give it a name like "Prism".</li>
+              <li>Copy the key that appears — it's a long string of letters and numbers.</li>
+              <li>Paste it into the field above and tap <strong>Save & Start Generating</strong>.</li>
             </ol>
-            <div className="how-to-note">Your key is stored only on your device and is never shared with anyone.</div>
+            <div className="how-to-note">Your key is stored only on your device and never shared with anyone.</div>
           </div>
         </div>
       )}
