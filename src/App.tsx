@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@canva/asset";
 import { addElementAtCursor } from "@canva/design";
 import "./styles.css";
@@ -36,6 +36,15 @@ interface RefImage {
   name: string;
 }
 
+interface LibraryImage {
+  id: string;
+  url: string;
+  prompt: string;
+  width: number;
+  height: number;
+  createdAt: string;
+}
+
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 
 async function insertIntoCanva(url: string, width: number, height: number) {
@@ -56,6 +65,7 @@ async function insertIntoCanva(url: string, width: number, height: number) {
 }
 
 export function App() {
+  const [tab, setTab]                   = useState<"generate" | "library">("generate");
   const [modelId, setModelId]           = useState(MODELS[0].id);
   const [quality, setQuality]           = useState<Quality>("medium");
   const [count, setCount]               = useState(1);
@@ -70,6 +80,12 @@ export function App() {
   const [refImages, setRefImages]       = useState<RefImage[]>([]);
   const [refWarning, setRefWarning]     = useState<string | null>(null);
   const fileInputRef                    = useRef<HTMLInputElement>(null);
+
+  // Library state
+  const [libraryImages, setLibraryImages]       = useState<LibraryImage[]>([]);
+  const [libraryLoading, setLibraryLoading]     = useState(false);
+  const [libraryError, setLibraryError]         = useState<string | null>(null);
+  const [libraryAddingId, setLibraryAddingId]   = useState<string | null>(null);
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
 
@@ -88,6 +104,40 @@ export function App() {
       return prev;
     });
   }, []);
+
+  const fetchLibrary = useCallback(async () => {
+    setLibraryLoading(true);
+    setLibraryError(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/library?limit=40`);
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.message || `Error ${res.status}`);
+      }
+      const data = await res.json();
+      setLibraryImages(data.images || []);
+    } catch (err: any) {
+      setLibraryError(err.message || "Failed to load library.");
+    } finally {
+      setLibraryLoading(false);
+    }
+  }, []);
+
+  // Load library whenever the tab is opened
+  useEffect(() => {
+    if (tab === "library") fetchLibrary();
+  }, [tab, fetchLibrary]);
+
+  const handleLibraryAddToSlide = async (img: LibraryImage) => {
+    setLibraryAddingId(img.id);
+    try {
+      await insertIntoCanva(img.url, img.width, img.height);
+    } catch (err: any) {
+      setLibraryError("Couldn't add to slide: " + err.message);
+    } finally {
+      setLibraryAddingId(null);
+    }
+  };
 
   const handleRefUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -207,6 +257,52 @@ export function App() {
         </div>
         <p className="header-sub">Top image models at your command, right inside Canva.</p>
       </div>
+
+      {/* Tab switcher */}
+      <div className="tab-switcher">
+        <button className={`tab-btn ${tab === "generate" ? "active" : ""}`} onClick={() => setTab("generate")}>Generate</button>
+        <button className={`tab-btn ${tab === "library"  ? "active" : ""}`} onClick={() => setTab("library")}>My Library</button>
+      </div>
+
+      {tab === "library" ? (
+        <div className="library-section">
+          <div className="library-toolbar">
+            <span className="label">RECENT IMAGES</span>
+            <button className="refresh-btn" onClick={fetchLibrary} disabled={libraryLoading}>
+              {libraryLoading ? "Loading..." : "↻ Refresh"}
+            </button>
+          </div>
+
+          {libraryError && <div className="error-banner">{libraryError}</div>}
+
+          {libraryLoading && libraryImages.length === 0 && (
+            <div className="library-empty">Loading your images...</div>
+          )}
+
+          {!libraryLoading && libraryImages.length === 0 && !libraryError && (
+            <div className="library-empty">No images yet — generate some first!</div>
+          )}
+
+          {libraryImages.length > 0 && (
+            <div className="library-grid">
+              {libraryImages.map((img) => (
+                <div key={img.id} className="library-item">
+                  <img src={img.url} alt={img.prompt} className="library-thumb" title={img.prompt} />
+                  <div className="library-prompt">{img.prompt}</div>
+                  <button
+                    className="add-btn"
+                    onClick={() => handleLibraryAddToSlide(img)}
+                    disabled={libraryAddingId === img.id}
+                  >
+                    {libraryAddingId === img.id ? "Adding..." : "+ Add to slide"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+      <>
 
       {/* Model */}
       <div className="section">
@@ -335,6 +431,8 @@ export function App() {
             ))}
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

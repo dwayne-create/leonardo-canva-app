@@ -107,6 +107,60 @@ app.get("/api/generation/:id", async (req, res) => {
   }
 });
 
+// ─── GET /api/library ────────────────────────────────────────────────────────
+// Returns the authenticated user's recent generation history.
+app.get("/api/library", async (req, res) => {
+  const limit  = Math.min(parseInt(req.query.limit  || "40", 10), 100);
+  const offset = parseInt(req.query.offset || "0", 10);
+
+  try {
+    // Step 1: resolve user id from the API key
+    const meRes = await fetch(`${LEONARDO_BASE}/me`, {
+      headers: { Authorization: `Bearer ${LEONARDO_API_KEY}` },
+    });
+    const meData = await meRes.json();
+    const userId = meData?.user_details?.[0]?.user?.id;
+    if (!userId) {
+      console.error("Could not resolve user id:", meData);
+      return res.status(500).json({ message: "Could not resolve Leonardo user id" });
+    }
+
+    // Step 2: fetch generation history
+    const histRes = await fetch(
+      `${LEONARDO_BASE}/generations/user/${userId}?offset=${offset}&limit=${limit}`,
+      { headers: { Authorization: `Bearer ${LEONARDO_API_KEY}` } }
+    );
+    const histData = await histRes.json();
+
+    if (!histRes.ok) {
+      return res.status(histRes.status).json({ message: histData?.error || "Leonardo API error" });
+    }
+
+    // Flatten to a simple list of images with metadata
+    const generations = histData?.generations || [];
+    const images = [];
+    for (const gen of generations) {
+      for (const img of gen.generated_images || []) {
+        images.push({
+          id:        img.id,
+          url:       img.url,
+          prompt:    gen.prompt,
+          width:     gen.width,
+          height:    gen.height,
+          modelId:   gen.modelId,
+          createdAt: gen.createdAt,
+        });
+      }
+    }
+
+    console.log(`✓ Library: returned ${images.length} images (offset=${offset})`);
+    return res.json({ images, total: images.length });
+  } catch (err) {
+    console.error("Library error:", err);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── GET /api/models ─────────────────────────────────────────────────────────
 // Returns available Leonardo platform models (optional, for dynamic model list).
 app.get("/api/models", async (_req, res) => {
