@@ -1,4 +1,6 @@
 import { useState, useCallback } from "react";
+import { upload } from "@canva/asset";
+import { addNativeElement } from "@canva/design";
 import "./styles.css";
 
 // Leonardo model options
@@ -29,12 +31,9 @@ const SOCIAL_SIZES = [
 const QUALITY_OPTIONS = ["low", "medium", "high"] as const;
 type Quality = typeof QUALITY_OPTIONS[number];
 
-const BACKEND_URL = "http://localhost:3001";
+const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 
-// Lazy-load Canva SDK at runtime to avoid init crashes
 async function insertIntoCanva(url: string, width: number, height: number) {
-  const { upload } = await import("@canva/asset");
-  const { addNativeElement } = await import("@canva/design");
   const asset = await upload({
     type: "image",
     mimeType: "image/jpeg",
@@ -42,6 +41,7 @@ async function insertIntoCanva(url: string, width: number, height: number) {
     thumbnailUrl: url,
     width,
     height,
+    aiDisclosure: "app_generated",
   });
   await addNativeElement({ type: "image", ref: asset.ref });
 }
