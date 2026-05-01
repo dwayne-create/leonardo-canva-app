@@ -718,8 +718,9 @@ export function App() {
             )}
             {/* Loaded — show numeric balance */}
             {!balanceLoading && balance !== null && (
-              <div className="balance-pill" title="Click to refresh balance" onClick={fetchBalance} style={{ cursor: "pointer" }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              <div className="balance-pill" title="API credits available — click to refresh" onClick={fetchBalance} style={{ cursor: "pointer" }}>
+                {/* Coin stack icon matching Leonardo's UI */}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v4c0 1.657 3.582 3 8 3s8-1.343 8-3V6"/><path d="M4 10v4c0 1.657 3.582 3 8 3s8-1.343 8-3v-4"/><path d="M4 14v4c0 1.657 3.582 3 8 3s8-1.343 8-3v-4"/></svg>
                 {balance.toLocaleString()}
               </div>
             )}
