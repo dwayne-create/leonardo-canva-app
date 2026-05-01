@@ -13,13 +13,7 @@ const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const LEONARDO_BASE    = "https://cloud.leonardo.ai/api/rest/v1";
-const LEONARDO_GRAPHQL = "https://api.leonardo.ai/v1/graphql";
-
-// Helper: ensure a generation ID has UUID hyphens (GraphQL returns no-hyphen hex)
-function toUUID(id) {
-  if (!id || id.includes("-")) return id;
-  return `${id.slice(0,8)}-${id.slice(8,12)}-${id.slice(12,16)}-${id.slice(16,20)}-${id.slice(20)}`;
-}
+const LEONARDO_V2_BASE = "https://cloud.leonardo.ai/api/rest/v2";
 
 // Helper: resolve the API key to use — user-supplied key takes priority
 function resolveKey(req) {
@@ -35,7 +29,7 @@ app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "25mb" })); // allow large base64 payloads
 
 // ─── Helper: upload a base64 image to Leonardo as an init-image ──────────────
-// Returns the init_image id to use in a generation request.
+// Returns the uploaded image id to use in guidances.image_reference.
 async function uploadInitImage(base64DataUrl, apiKey) {
   const matches = base64DataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
   if (!matches) throw new Error("Invalid image data URL");
@@ -64,20 +58,23 @@ async function uploadInitImage(base64DataUrl, apiKey) {
 }
 
 // ─── POST /api/generate ─────────────────────────────────────────────────────
-// Starts a Leonardo V2 generation job and returns the generationId.
+// Starts a Leonardo V2 generation job via the REST v2 endpoint.
 //
-// V2 model string IDs (passed directly — no UUID mapping needed):
-//   gpt-image-2       GPT Image 2       (quality field: LOW/MEDIUM/HIGH)
-//   gemini-image-2    Nano Banana Pro   (grid dims; image_reference_strength)
-//   seedream-4.5      Seedream 4.5      (intRange 16-4096 mod-8)
-//   flux-2-pro        Flux 2 Pro        (intRange 256-1440 mod-8)
-
-// Models that use image_reference_strength (GPT Image 2 ignores it — omit)
-const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "gemini-2.5-flash-image", "nano-banana-2", "seedream-4.0", "seedream-4.5", "flux-2-pro", "ideogram-v3.0"]);
+// V2 REST endpoint: POST https://cloud.leonardo.ai/api/rest/v2/generations
+// Body: { model: "gpt-image-2", public: false, parameters: { prompt, width, height, quantity, quality?, guidances? } }
+//
+// V2 model string IDs:
+//   gpt-image-2       GPT Image 2       (quality: LOW/MEDIUM/HIGH; no ref strength)
+//   gemini-image-2    Nano Banana Pro   (grid dims; ref strength: LOW/MID/HIGH)
+//   seedream-4.5      Seedream 4.5      (mod-8, 512-4096; ref strength)
+//   flux-2-pro        Flux.2 Pro        (mod-8, 256-1440; ref strength)
 
 // Models where quality param (LOW/MEDIUM/HIGH) is supported
-const MODELS_WITH_QUALITY = new Set(["gpt-image-1.5", "ideogram-v3.0"]);
-// prompt_enhance is excluded for ALL models — user confirmed OK with this
+const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v3.0"]);
+
+// Models that support image_reference strength inside guidances
+// GPT Image 2 does NOT use strength — omit it for that model
+const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "seedream-4.5", "seedream-4.0", "flux-2-pro", "ideogram-v3.0"]);
 
 app.post("/api/generate", async (req, res) => {
   const { modelId, prompt, width, height, num_images = 1, quality, refImages } = req.body;
@@ -87,13 +84,13 @@ app.post("/api/generate", async (req, res) => {
     return res.status(400).json({ message: "prompt is required" });
   }
 
-  // Upload ALL reference images as image_reference_ids (V2 supports up to 6)
-  const image_reference_ids = [];
+  // Upload ALL reference images (up to 6 for most models)
+  const uploadedRefIds = [];
   if (refImages && refImages.length > 0) {
     for (const dataUrl of refImages) {
       try {
         const id = await uploadInitImage(dataUrl, apiKey);
-        image_reference_ids.push(id);
+        uploadedRefIds.push(id);
         console.log(`✓ Ref image uploaded: ${id}`);
       } catch (e) {
         console.error("Ref image upload failed:", e.message);
@@ -108,68 +105,60 @@ app.post("/api/generate", async (req, res) => {
     ? (qualityMap[quality] || "MEDIUM")
     : undefined;
 
-  // image_reference_strength — only for models that use it
-  const refStrength = (MODELS_WITH_REF_STRENGTH.has(modelId) && image_reference_ids.length > 0)
-    ? "HIGH"
+  // Build guidances.image_reference if we have ref images
+  const hasRefStrength = MODELS_WITH_REF_STRENGTH.has(modelId);
+  const guidances = uploadedRefIds.length > 0
+    ? {
+        image_reference: uploadedRefIds.map(id => ({
+          image: { id, type: "UPLOADED" },
+          ...(hasRefStrength ? { strength: "MID" } : {}),
+        })),
+      }
     : undefined;
 
   try {
-    // Build the parameters object (matches what Leonardo's own website sends via GraphQL)
     const parameters = {
       prompt,
       width:    width  || 1024,
       height:   height || 1024,
       quantity: Math.min(num_images, 4),
-      ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
-      ...(refStrength  ? { image_reference_strength: refStrength } : {}),
-      ...(qualityParam ? { quality: qualityParam }                  : {}),
+      ...(qualityParam ? { quality: qualityParam } : {}),
+      ...(guidances    ? { guidances }              : {}),
     };
 
-    const graphqlBody = {
-      operationName: "Generate",
-      variables: {
-        request: {
-          model: modelId,
-          public: false,
-          parameters,
-        },
-      },
-      query: `mutation Generate($request: CreateGenerationRequest!) {
-        generate(request: $request) {
-          apiCreditCost
-          generationId
-        }
-      }`,
+    const body = {
+      model:  modelId,
+      public: false,
+      parameters,
     };
 
-    console.log(`  [DEBUG] GraphQL request — model: ${modelId}, dims: ${parameters.width}x${parameters.height}, qty: ${parameters.quantity}${qualityParam ? `, quality: ${qualityParam}` : ""}`);
+    console.log(`  [DEBUG] V2 REST — model: ${modelId}, dims: ${parameters.width}x${parameters.height}, qty: ${parameters.quantity}${qualityParam ? `, quality: ${qualityParam}` : ""}${uploadedRefIds.length ? `, refs: ${uploadedRefIds.length}` : ""}`);
 
-    const response = await fetch(LEONARDO_GRAPHQL, {
+    const response = await fetch(`${LEONARDO_V2_BASE}/generations`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(graphqlBody),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();
 
-    // GraphQL errors come in data.errors array
-    if (data?.errors && data.errors.length > 0) {
-      const errMsg = data.errors[0]?.message || "Leonardo GraphQL error";
-      console.error(`  [DEBUG] GraphQL error:`, JSON.stringify(data.errors));
-      return res.status(400).json({ message: errMsg, debug: data.errors });
+    if (!response.ok) {
+      const errMsg = data?.message || data?.error || `Leonardo API error (${response.status})`;
+      console.error(`  [DEBUG] V2 error (${response.status}):`, JSON.stringify(data));
+      return res.status(response.status).json({ message: errMsg, debug: data });
     }
 
-    const generationId = data?.data?.generate?.generationId;
+    const generationId = data?.generationId;
     if (!generationId) {
-      console.error(`  [DEBUG] Unexpected response:`, JSON.stringify(data));
-      return res.status(500).json({ message: "No generationId returned from Leonardo" });
+      console.error(`  [DEBUG] Unexpected V2 response:`, JSON.stringify(data));
+      return res.status(500).json({ message: "No generationId returned from Leonardo", debug: data });
     }
 
     console.log(`✓ Generation started: ${generationId}`);
-    return res.json({ generationId: toUUID(generationId) });
+    return res.json({ generationId });
   } catch (err) {
     console.error("Generate error:", err);
     return res.status(500).json({ message: err.message });
@@ -177,7 +166,7 @@ app.post("/api/generate", async (req, res) => {
 });
 
 // ─── GET /api/generation/:id ─────────────────────────────────────────────────
-// Polls Leonardo for the status of a generation job.
+// Polls Leonardo for the status of a generation job (v1 polling endpoint).
 app.get("/api/generation/:id", async (req, res) => {
   const { id } = req.params;
   const apiKey = resolveKey(req);
@@ -307,7 +296,7 @@ app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
   console.log(`   API key: ${LEONARDO_API_KEY.slice(0, 8)}...${LEONARDO_API_KEY.slice(-4)}`);
   console.log(`\n   Endpoints:`);
-  console.log(`   POST /api/generate     — start a generation`);
+  console.log(`   POST /api/generate       — start a V2 generation`);
   console.log(`   GET  /api/generation/:id — poll for results`);
-  console.log(`   GET  /api/models        — list available models\n`);
+  console.log(`   GET  /api/models         — list available models\n`);
 });
