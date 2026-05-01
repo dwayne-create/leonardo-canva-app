@@ -108,18 +108,17 @@ app.post("/api/generate", async (req, res) => {
 
   try {
     const body = {
-      model:    modelId,
+      modelId:    modelId,
       prompt,
-      width:    width  || 1024,
-      height:   height || 1024,
-      quantity: Math.min(num_images, 4),
-      // prompt_enhance omitted for all models — confirmed OK by user
+      width:      width  || 1024,
+      height:     height || 1024,
+      num_images: Math.min(num_images, 4),
       ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
       ...(refStrength  ? { image_reference_strength: refStrength } : {}),
       ...(qualityParam ? { quality: qualityParam }                  : {}),
     };
 
-    // ── DEBUG: log the exact body (mask image ids for brevity) ──
+    // ── DEBUG: log the exact body sent to Leonardo ──
     console.log(`  [DEBUG] Full body to Leonardo:`, JSON.stringify({
       ...body,
       image_reference_ids: body.image_reference_ids ? `[${body.image_reference_ids.length} ids]` : undefined,
