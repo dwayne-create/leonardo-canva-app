@@ -415,6 +415,18 @@ body {
   color: #dc2626;
 }
 
+.dim-error-banner {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 3px solid #f97316;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #c2410c;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
 /* Generate button */
 .generate-btn {
   width: 100%;

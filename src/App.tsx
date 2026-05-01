@@ -3,8 +3,14 @@ import { upload } from "@canva/asset";
 import { addElementAtCursor, addElementAtPoint } from "@canva/design";
 import "./styles.css";
 
-// Valid pixel dimensions for Nano Banana Pro (Leonardo enforces these exactly)
-const NANO_DIMS = [672, 720, 752, 832, 880, 944, 1024, 1104, 1184, 1248, 1392, 1456, 1568];
+// ─── V2 model dimension grids ────────────────────────────────────────────────
+
+// Full verified grid for Nano Banana Pro (gemini-image-2) from API docs
+const NB_PRO_DIMS = [
+  672, 768, 848, 896, 928, 1024, 1152, 1200, 1264, 1376,
+  1536, 1696, 1792, 1856, 2048, 2304, 2400, 2528, 2688,
+  2752, 3072, 3392, 3584, 3712, 4096, 4608, 4800, 5056, 5504,
+];
 
 // Snap a dimension to the nearest value in a list
 function snapToValid(val: number, validDims: number[]): number {
@@ -13,28 +19,48 @@ function snapToValid(val: number, validDims: number[]): number {
   );
 }
 
-// Each model maps to a real Leonardo model ID
+// GPT Image 2 four-constraint validator (returns list of issues)
+function validateGptImage2(w: number, h: number): string[] {
+  const issues: string[] = [];
+  if (w % 16 !== 0) issues.push(`Width must be a multiple of 16`);
+  if (h % 16 !== 0) issues.push(`Height must be a multiple of 16`);
+  if (w > 3824) issues.push(`Width must be ≤ 3824px`);
+  if (h > 3824) issues.push(`Height must be ≤ 3824px`);
+  if (w > 0 && h > 0) {
+    const ratio = Math.max(w, h) / Math.min(w, h);
+    if (ratio > 3.0 + 1e-6) issues.push(`Aspect ratio must be ≤ 3:1 (currently ${ratio.toFixed(2)}:1)`);
+    const px = w * h;
+    if (px < 655360)   issues.push(`Too few pixels — minimum ~0.66MP`);
+    if (px > 8294400)  issues.push(`Too many pixels — maximum ~8.3MP`);
+  }
+  return issues;
+}
+
+// V2 string model IDs (passed directly to Leonardo REST API)
 const MODELS = [
-  { id: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", name: "GPT Image 2",    maxRefs: 6, maxImages: 4,  validDimensions: undefined },
-  { id: "28aeddf8-bd19-4803-80fc-79602d1a9989", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4,  validDimensions: NANO_DIMS },
-  { id: "05ce0082-2d80-4a2d-8653-4d1c85e2418e", name: "Seedream 4.5",    maxRefs: 4, maxImages: 4,  validDimensions: undefined },
-  { id: "b2614463-296c-462a-9586-aafdb8f00e36", name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4,  validDimensions: undefined },
+  { id: "gpt-image-2",    name: "GPT Image 2",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 3824, multipleOf: 16, hasQuality: true  },
+  { id: "gemini-image-2", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4, validDimensions: NB_PRO_DIMS,                        minDim: 672,  maxDim: 5504, multipleOf: 1,  hasQuality: false },
+  { id: "seedream-4.5",   name: "Seedream 4.5",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 4096, multipleOf: 8,  hasQuality: false },
+  { id: "flux-2-pro",     name: "Flux.2 Pro",      maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false },
 ];
 
+// All presets verified valid for ALL four models:
+// - NB Pro: grid values ✓   - GPT Image 2: mod-16, ratio ok, pixels ok ✓
+// - Seedream 4.5: mod-8, in range ✓  - Flux 2 Pro: max 1440, mod-8 ✓
 const STANDARD_SIZES = [
   { label: "1:1",  w: 1024, h: 1024 },
-  { label: "2:3",  w: 832,  h: 1248 },
-  { label: "3:2",  w: 1248, h: 832  },
-  { label: "16:9", w: 1392, h: 752  },
-  { label: "4:3",  w: 1248, h: 944  },
-  { label: "9:16", w: 752,  h: 1392 },
+  { label: "2:3",  w: 848,  h: 1264 },
+  { label: "3:2",  w: 1264, h: 848  },
+  { label: "16:9", w: 1376, h: 768  },
+  { label: "4:3",  w: 1200, h: 896  },
+  { label: "9:16", w: 768,  h: 1376 },
 ];
 
 const SOCIAL_SIZES = [
-  { label: "Instagram", w: 944,  h: 1184 },
-  { label: "TikTok",    w: 752,  h: 1392 },
-  { label: "Twitter",   w: 1248, h: 880  },
-  { label: "Facebook",  w: 1392, h: 752  },
+  { label: "Instagram", w: 928,  h: 1152 },
+  { label: "TikTok",    w: 768,  h: 1376 },
+  { label: "Twitter",   w: 1200, h: 896  },
+  { label: "Facebook",  w: 1376, h: 768  },
 ];
 
 const QUALITY_OPTIONS = ["low", "medium", "high"] as const;
@@ -104,6 +130,7 @@ export function App() {
   const [error, setError]               = useState<string | null>(null);
   const [refImages, setRefImages]       = useState<RefImage[]>([]);
   const [refWarning, setRefWarning]     = useState<string | null>(null);
+  const [dimErrors, setDimErrors]       = useState<string[]>([]);
   const fileInputRef                    = useRef<HTMLInputElement>(null);
 
   // API key state
@@ -120,6 +147,15 @@ export function App() {
   const [deletingId, setDeletingId]             = useState<string | null>(null);
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
+
+  // Live dimension validation (GPT Image 2 has 4 simultaneous constraints)
+  useEffect(() => {
+    if (modelId === "gpt-image-2") {
+      setDimErrors(validateGptImage2(width, height));
+    } else {
+      setDimErrors([]);
+    }
+  }, [modelId, width, height]);
 
   // Build headers with optional user API key
   const buildHeaders = useCallback((extra: Record<string, string> = {}) => {
@@ -511,7 +547,7 @@ export function App() {
         </div>
       </div>
 
-      {/* Width / Height — sliders for free-form models, dropdowns for fixed-dim models */}
+      {/* Width / Height — dropdowns for grid models, sliders for range models */}
       {currentModel.validDimensions ? (
         <div className="section">
           <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
@@ -525,17 +561,26 @@ export function App() {
           <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
         </div>
       ) : (
-        <>
-          <div className="section">
-            <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
-            <input type="range" min={512} max={1536} step={64} value={width} onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
-          </div>
-          <div className="section">
-            <div className="slider-row"><label className="label">HEIGHT</label><span className="slider-val">{height}</span></div>
-            <input type="range" min={512} max={1536} step={64} value={height} onChange={(e) => { setHeight(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
-            <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
-          </div>
-        </>
+        <div className="section">
+          <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
+          <input type="range"
+            min={currentModel.minDim} max={currentModel.maxDim} step={currentModel.multipleOf}
+            value={width}
+            onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }}
+            disabled={isGenerating} className="slider" />
+          <div className="slider-row" style={{ marginTop: 8 }}><label className="label">HEIGHT</label><span className="slider-val">{height}</span></div>
+          <input type="range"
+            min={currentModel.minDim} max={currentModel.maxDim} step={currentModel.multipleOf}
+            value={height}
+            onChange={(e) => { setHeight(+e.target.value); setActivePreset("custom"); }}
+            disabled={isGenerating} className="slider" />
+          <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
+          {dimErrors.length > 0 && (
+            <div className="dim-error-banner">
+              {dimErrors.map((e, i) => <div key={i}>⚠ {e}</div>)}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Reference images */}
@@ -578,7 +623,7 @@ export function App() {
       {error && <div className="error-banner">{error}</div>}
       {status && <div className="status-banner">{status}</div>}
 
-      <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim()}>
+      <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
         {isGenerating ? "Generating..." : "Generate"}
       </button>
 

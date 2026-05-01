@@ -57,24 +57,19 @@ async function uploadInitImage(base64DataUrl, apiKey) {
 }
 
 // ─── POST /api/generate ─────────────────────────────────────────────────────
-// Starts a Leonardo generation job and returns the generationId.
-// Real Leonardo model IDs — fallback if a placeholder or unknown ID is passed
-const MODEL_ID_MAP = {
-  "phoenix-1.0":        "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3",
-  "flux-kontext":       "28aeddf8-bd19-4803-80fc-79602d1a9989",
-  "flux-dev":           "b2614463-296c-462a-9586-aafdb8f00e36",
-  "lucid-realism":      "05ce0082-2d80-4a2d-8653-4d1c85e2418e",
-};
-const DEFAULT_MODEL = "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"; // Phoenix 1.0
+// Starts a Leonardo V2 generation job and returns the generationId.
+//
+// V2 model string IDs (passed directly — no UUID mapping needed):
+//   gpt-image-2       GPT Image 2       (quality field: LOW/MEDIUM/HIGH)
+//   gemini-image-2    Nano Banana Pro   (grid dims; image_reference_strength)
+//   seedream-4.5      Seedream 4.5      (intRange 16-4096 mod-8)
+//   flux-2-pro        Flux 2 Pro        (intRange 256-1440 mod-8)
 
-function resolveModelId(id) {
-  // If it's a known short key, map it
-  if (MODEL_ID_MAP[id]) return MODEL_ID_MAP[id];
-  // If it looks like a real UUID (8-4-4-4-12), use it as-is
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return id;
-  // Otherwise it's a placeholder — fall back to default
-  return DEFAULT_MODEL;
-}
+// Models that use image_reference_strength (GPT Image 2 ignores it — omit)
+const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "gemini-2.5-flash-image", "nano-banana-2", "seedream-4.0", "seedream-4.5", "flux-2-pro", "ideogram-v3.0"]);
+
+// Models where quality param (LOW/MEDIUM/HIGH) is supported
+const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v3.0"]);
 
 app.post("/api/generate", async (req, res) => {
   const { modelId, prompt, width, height, num_images = 1, quality, refImages } = req.body;
@@ -84,52 +79,63 @@ app.post("/api/generate", async (req, res) => {
     return res.status(400).json({ message: "prompt is required" });
   }
 
-  // Map quality to Leonardo's guidance scale / alchemy settings
-  const qualitySettings = {
-    low:    { alchemy: false, guidance_scale: 7,  num_inference_steps: 15 },
-    medium: { alchemy: true,  guidance_scale: 7,  num_inference_steps: 25 },
-    high:   { alchemy: true,  guidance_scale: 8,  num_inference_steps: 40 },
-  };
-  const qs = qualitySettings[quality] || qualitySettings.medium;
-
-  // Upload first reference image as init-image if provided
-  let init_image_id = null;
+  // Upload ALL reference images as image_reference_ids (V2 supports up to 6)
+  const image_reference_ids = [];
   if (refImages && refImages.length > 0) {
-    try {
-      init_image_id = await uploadInitImage(refImages[0], apiKey);
-      console.log(`✓ Init image uploaded: ${init_image_id}`);
-    } catch (e) {
-      console.error("Init image upload failed:", e.message);
-      // Non-fatal — generate without the reference image
+    for (const dataUrl of refImages) {
+      try {
+        const id = await uploadInitImage(dataUrl, apiKey);
+        image_reference_ids.push(id);
+        console.log(`✓ Ref image uploaded: ${id}`);
+      } catch (e) {
+        console.error("Ref image upload failed:", e.message);
+        // Non-fatal — skip this ref image
+      }
     }
   }
 
+  // Build quality param — only for models that support it
+  const qualityMap = { low: "LOW", medium: "MEDIUM", high: "HIGH" };
+  const qualityParam = MODELS_WITH_QUALITY.has(modelId)
+    ? (qualityMap[quality] || "MEDIUM")
+    : undefined;
+
+  // image_reference_strength — only for models that use it
+  const refStrength = (MODELS_WITH_REF_STRENGTH.has(modelId) && image_reference_ids.length > 0)
+    ? "HIGH"
+    : undefined;
+
   try {
+    const body = {
+      model:          modelId,
+      prompt,
+      width:          width  || 1024,
+      height:         height || 1024,
+      quantity:       Math.min(num_images, 4),
+      prompt_enhance: "OFF",
+      ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
+      ...(refStrength  ? { image_reference_strength: refStrength } : {}),
+      ...(qualityParam ? { quality: qualityParam }                  : {}),
+    };
+
+    console.log(`  Sending to Leonardo:`, JSON.stringify({ ...body, image_reference_ids: body.image_reference_ids?.length ?? 0 }));
+
     const response = await fetch(`${LEONARDO_BASE}/generations`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        modelId: resolveModelId(modelId),
-        prompt,
-        width:      width  || 1024,
-        height:     height || 1024,
-        num_images: Math.min(num_images, 4),
-        presetStyle: "DYNAMIC",
-        ...(init_image_id ? { init_image_id, init_strength: 0.45 } : {}),
-        ...qs,
-      }),
+      body: JSON.stringify(body),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    // V2 can return 200 with an errors array — check both
+    if (!response.ok || (Array.isArray(data) && data.some(d => d.error))) {
+      const errMsg = data?.error || data?.[0]?.error || "Leonardo API error";
       console.error("Leonardo error:", data);
-      return res.status(response.status).json({
-        message: data?.error || "Leonardo API error",
-      });
+      return res.status(response.ok ? 400 : response.status).json({ message: errMsg });
     }
 
     const generationId = data?.sdGenerationJob?.generationId;
