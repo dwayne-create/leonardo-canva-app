@@ -69,7 +69,7 @@ async function uploadInitImage(base64DataUrl, apiKey) {
 const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "gemini-2.5-flash-image", "nano-banana-2", "seedream-4.0", "seedream-4.5", "flux-2-pro", "ideogram-v3.0"]);
 
 // Models where quality param (LOW/MEDIUM/HIGH) is supported
-const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v3.0"]);
+const MODELS_WITH_QUALITY = new Set(["gpt-image-1.5", "ideogram-v3.0"]);
 // prompt_enhance is excluded for ALL models — user confirmed OK with this
 
 app.post("/api/generate", async (req, res) => {
