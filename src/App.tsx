@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@canva/asset";
-import { addElementAtCursor } from "@canva/design";
+import { addElementAtCursor, addElementAtPoint } from "@canva/design";
 import "./styles.css";
 
 // Each model maps to a real Leonardo model ID
@@ -59,11 +59,22 @@ async function insertIntoCanva(url: string, width: number, height: number) {
     height,
     aiDisclosure: "app_generated",
   });
-  await addElementAtCursor({
-    type: "image",
-    ref: asset.ref,
-    altText: { text: "AI generated image", decorative: false },
-  });
+  // Try cursor-based insertion first (works in documents)
+  // Fall back to point-based insertion (works in presentations/slides)
+  try {
+    await addElementAtCursor({
+      type: "image",
+      ref: asset.ref,
+      altText: { text: "AI generated image", decorative: false },
+    });
+  } catch {
+    await addElementAtPoint({
+      type: "image",
+      ref: asset.ref,
+      altText: { text: "AI generated image", decorative: false },
+      atPoint: { x: 50, y: 50 },
+    });
+  }
 }
 
 export function App() {
