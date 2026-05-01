@@ -471,11 +471,37 @@ body {
   line-height: 1.6;
 }
 
+/* Header top row (logo + balance) */
+.header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.balance-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
 /* Generate button */
 .generate-btn {
   width: 100%;
   padding: 13px;
   background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: none;
   border-radius: 8px;
   color: white;
@@ -502,6 +528,17 @@ body {
 .generate-btn.loading {
   opacity: 0.8;
   cursor: wait;
+}
+
+.generate-cost {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* Preview */

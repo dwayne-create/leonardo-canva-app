@@ -276,6 +276,28 @@ app.delete("/api/generation/:id", async (req, res) => {
   }
 });
 
+// ─── GET /api/balance ────────────────────────────────────────────────────────
+// Returns the authenticated user's API credit balance.
+app.get("/api/balance", async (req, res) => {
+  const apiKey = resolveKey(req);
+  try {
+    const meRes = await fetch(`${LEONARDO_BASE}/me`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const meData = await meRes.json();
+    const details = meData?.user_details?.[0];
+    if (!details) {
+      return res.status(500).json({ message: "Could not resolve user details" });
+    }
+    return res.json({
+      apiCredit:         details.apiCredit         ?? null,
+      tokenRenewalDate:  details.user?.tokenRenewalDate ?? null,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── GET /api/models ─────────────────────────────────────────────────────────
 // Returns available Leonardo platform models (optional, for dynamic model list).
 app.get("/api/models", async (_req, res) => {

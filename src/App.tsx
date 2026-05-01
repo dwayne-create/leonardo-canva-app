@@ -37,12 +37,27 @@ function validateGptImage2(w: number, h: number): string[] {
 }
 
 // V2 string model IDs (passed directly to Leonardo REST API)
+// creditsPerImage: base API credit cost at 1024×1024 (1MP). GPT Image 2 scales with pixel area;
+// others use a flat rate per image. Quality multipliers for GPT Image 2: low×0.5, medium×1, high×2.
 const MODELS = [
-  { id: "gpt-image-2",    name: "GPT Image 2",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 3824, multipleOf: 16, hasQuality: true  },
-  { id: "gemini-image-2", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4, validDimensions: NB_PRO_DIMS,                        minDim: 672,  maxDim: 5504, multipleOf: 1,  hasQuality: false },
-  { id: "seedream-4.5",   name: "Seedream 4.5",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 4096, multipleOf: 8,  hasQuality: false },
-  { id: "flux-2-pro",     name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false },
+  { id: "gpt-image-2",    name: "GPT Image 2",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 3824, multipleOf: 16, hasQuality: true,  creditsPerImage: 118, scalesWithRes: true  },
+  { id: "gemini-image-2", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4, validDimensions: NB_PRO_DIMS,                        minDim: 672,  maxDim: 5504, multipleOf: 1,  hasQuality: false, creditsPerImage: 50,  scalesWithRes: false },
+  { id: "seedream-4.5",   name: "Seedream 4.5",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 4096, multipleOf: 8,  hasQuality: false, creditsPerImage: 50,  scalesWithRes: false },
+  { id: "flux-2-pro",     name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false, creditsPerImage: 25,  scalesWithRes: false },
 ];
+
+// Estimate API credit cost for a generation
+function estimateCredits(model: typeof MODELS[0], w: number, h: number, qty: number, quality: string): number {
+  let base = model.creditsPerImage;
+  if (model.scalesWithRes) {
+    // Scale with pixel area relative to 1MP baseline
+    base = Math.round(base * (w * h) / (1024 * 1024));
+    // Quality multiplier for GPT Image 2
+    if (quality === "low")  base = Math.round(base * 0.5);
+    if (quality === "high") base = Math.round(base * 2);
+  }
+  return base * qty;
+}
 
 // All presets verified valid for ALL four models:
 // - NB Pro: grid values ✓   - GPT Image 2: mod-16, ratio ok, pixels ok ✓
@@ -137,6 +152,23 @@ export function App() {
   const [apiKey, setApiKey]           = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) || "");
   const [apiKeyInput, setApiKeyInput] = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) || "");
   const [apiKeySaved, setApiKeySaved] = useState(false);
+
+  // Balance state
+  const [balance, setBalance] = useState<number | null>(null);
+
+  const fetchBalance = useCallback(async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (typeof data.apiCredit === "number") setBalance(data.apiCredit);
+    } catch { /* silent — balance is non-critical */ }
+  }, [buildHeaders]);
+
+  // Fetch balance when API key is set
+  useEffect(() => {
+    if (apiKey) fetchBalance();
+  }, [apiKey, fetchBalance]);
 
   // Library state
   const [libraryImages, setLibraryImages]       = useState<LibraryImage[]>([]);
@@ -335,6 +367,7 @@ export function App() {
       setStatus("Generating... (10–30s)");
       const urls = await pollForImages(generationId);
       setPreviewUrls(urls);
+      fetchBalance(); // refresh balance after generation
       setStatus("Done! Adding to slide...");
       try {
         await insertIntoCanva(urls[0], width, height);
@@ -382,14 +415,22 @@ export function App() {
 
       {/* Header */}
       <div className="header">
-        <div className="logo">
-          <svg className="logo-svg" viewBox="0 0 250 267" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M238.535 0C241.97 0 244.192 3.63035 242.629 6.68935L213.985 62.7452C212.422 65.8042 214.644 69.4346 218.079 69.4346H229.417C232.821 69.4346 235.044 73.0045 233.543 76.0593L193.858 156.832C193.21 158.15 193.231 159.697 193.914 160.997L249.133 266.146C249.136 266.151 249.13 266.157 249.125 266.154C249.124 266.154 249.123 266.153 249.122 266.153H58.2702C54.5257 266.153 52.3518 261.916 54.5356 258.875L87.2882 213.255C89.472 210.213 87.2981 205.977 83.5536 205.977H25.9329C22.703 205.977 20.48 202.733 21.645 199.721L46.6378 135.092C47.8028 132.079 45.5798 128.836 42.3499 128.836H4.60343C1.17468 128.836 -1.04751 125.218 0.502821 122.16L61.1532 2.51866C61.9364 0.973637 63.5216 0 65.2538 0H238.535ZM116.313 69.6123C97.1988 69.6125 80.6022 79.6743 72.2754 94.4548C71.567 95.7123 71.5673 97.2465 72.2763 98.5036C80.6035 113.268 97.1995 123.337 116.313 123.337C135.426 123.337 152.023 113.276 160.358 98.5046C161.068 97.247 161.068 95.7118 160.359 94.4539C152.031 79.6819 135.426 69.6123 116.313 69.6123ZM116.314 80.207C125.824 80.207 133.53 87.3984 133.531 96.2822C133.531 105.166 125.824 112.367 116.314 112.367C106.803 112.367 99.0979 105.175 99.0979 96.2822C99.0981 87.3892 106.804 80.2072 116.314 80.207Z" fill="#6E60EE"/>
-          </svg>
-          <div className="logo-text-group">
-            <span className="logo-text">Prism</span>
-            <span className="logo-badge">by Leonardo.AI</span>
+        <div className="header-top-row">
+          <div className="logo">
+            <svg className="logo-svg" viewBox="0 0 250 267" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M238.535 0C241.97 0 244.192 3.63035 242.629 6.68935L213.985 62.7452C212.422 65.8042 214.644 69.4346 218.079 69.4346H229.417C232.821 69.4346 235.044 73.0045 233.543 76.0593L193.858 156.832C193.21 158.15 193.231 159.697 193.914 160.997L249.133 266.146C249.136 266.151 249.13 266.157 249.125 266.154C249.124 266.154 249.123 266.153 249.122 266.153H58.2702C54.5257 266.153 52.3518 261.916 54.5356 258.875L87.2882 213.255C89.472 210.213 87.2981 205.977 83.5536 205.977H25.9329C22.703 205.977 20.48 202.733 21.645 199.721L46.6378 135.092C47.8028 132.079 45.5798 128.836 42.3499 128.836H4.60343C1.17468 128.836 -1.04751 125.218 0.502821 122.16L61.1532 2.51866C61.9364 0.973637 63.5216 0 65.2538 0H238.535ZM116.313 69.6123C97.1988 69.6125 80.6022 79.6743 72.2754 94.4548C71.567 95.7123 71.5673 97.2465 72.2763 98.5036C80.6035 113.268 97.1995 123.337 116.313 123.337C135.426 123.337 152.023 113.276 160.358 98.5046C161.068 97.247 161.068 95.7118 160.359 94.4539C152.031 79.6819 135.426 69.6123 116.313 69.6123ZM116.314 80.207C125.824 80.207 133.53 87.3984 133.531 96.2822C133.531 105.166 125.824 112.367 116.314 112.367C106.803 112.367 99.0979 105.175 99.0979 96.2822C99.0981 87.3892 106.804 80.2072 116.314 80.207Z" fill="#6E60EE"/>
+            </svg>
+            <div className="logo-text-group">
+              <span className="logo-text">Prism</span>
+              <span className="logo-badge">by Leonardo.AI</span>
+            </div>
           </div>
+          {balance !== null && (
+            <div className="balance-pill" title="Your Leonardo API credit balance">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              {balance.toLocaleString()}
+            </div>
+          )}
         </div>
         <p className="header-sub">Top image models at your command, right inside Canva.</p>
       </div>
@@ -634,7 +675,15 @@ export function App() {
       {status && <div className="status-banner">{status}</div>}
 
       <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
-        {isGenerating ? "Generating..." : "Generate"}
+        {isGenerating ? "Generating..." : (
+          <>
+            Generate
+            <span className="generate-cost">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/><path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              {estimateCredits(currentModel, width, height, count, quality).toLocaleString()}
+            </span>
+          </>
+        )}
       </button>
 
       {previewUrls.length > 0 && (
