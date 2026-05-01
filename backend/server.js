@@ -353,6 +353,103 @@ app.get("/api/test-key", async (req, res) => {
   }
 });
 
+// ─── GET /api/collections ────────────────────────────────────────────────────
+// Returns the authenticated user's personal collections.
+app.get("/api/collections", async (req, res) => {
+  const apiKey = resolveKey(req);
+  try {
+    const response = await fetch(`${LEONARDO_BASE}/personal-collections`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ message: data?.error || "Leonardo API error" });
+    }
+    // Normalize: Leonardo returns { personal_collections: [...] }
+    const collections = data?.personal_collections || data?.collections || [];
+    console.log(`✓ Collections: returned ${collections.length} collections`);
+    return res.json({ collections });
+  } catch (err) {
+    console.error("Collections error:", err);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── POST /api/collections ───────────────────────────────────────────────────
+// Creates a new personal collection with the given name.
+app.post("/api/collections", async (req, res) => {
+  const { name } = req.body;
+  const apiKey = resolveKey(req);
+  if (!name) return res.status(400).json({ message: "name is required" });
+  try {
+    const response = await fetch(`${LEONARDO_BASE}/personal-collections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ name }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ message: data?.message || data?.error || "Leonardo API error" });
+    }
+    const created = data?.insert_personal_collections_one || data?.collection || data;
+    console.log(`✓ Created collection: "${name}"`);
+    return res.json({ collection: created });
+  } catch (err) {
+    console.error("Create collection error:", err);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── POST /api/collections/:collectionId/generations/:generationId ───────────
+// Adds a generation to a personal collection.
+app.post("/api/collections/:collectionId/generations/:generationId", async (req, res) => {
+  const { collectionId, generationId } = req.params;
+  const apiKey = resolveKey(req);
+  try {
+    const response = await fetch(
+      `${LEONARDO_BASE}/personal-collections/${collectionId}/generations/${generationId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return res.status(response.status).json({ message: data?.message || data?.error || "Leonardo API error" });
+    }
+    console.log(`✓ Added generation ${generationId} to collection ${collectionId}`);
+    return res.json({ added: true });
+  } catch (err) {
+    console.error("Add to collection error:", err);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── DELETE /api/collections/:collectionId/generations/:generationId ─────────
+// Removes a generation from a personal collection.
+app.delete("/api/collections/:collectionId/generations/:generationId", async (req, res) => {
+  const { collectionId, generationId } = req.params;
+  const apiKey = resolveKey(req);
+  try {
+    const response = await fetch(
+      `${LEONARDO_BASE}/personal-collections/${collectionId}/generations/${generationId}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return res.status(response.status).json({ message: data?.message || data?.error || "Leonardo API error" });
+    }
+    console.log(`✓ Removed generation ${generationId} from collection ${collectionId}`);
+    return res.json({ removed: true });
+  } catch (err) {
+    console.error("Remove from collection error:", err);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── GET /api/models ─────────────────────────────────────────────────────────
 // Returns available Leonardo platform models (optional, for dynamic model list).
 app.get("/api/models", async (_req, res) => {
@@ -368,7 +465,7 @@ app.get("/api/models", async (_req, res) => {
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-6", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-7", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
