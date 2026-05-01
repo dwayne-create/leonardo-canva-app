@@ -190,17 +190,18 @@ export function App() {
     return h;
   }, [apiKey]);
 
-  // Extract a numeric credit value from a Leonardo user_details object.
-  // Different plan types expose credits under different field names.
-  function extractCredit(details: Record<string, unknown>): number | null {
+  // Extract a numeric credit value from the proxy's /api/balance response.
+  // The proxy returns all known Leonardo credit fields at the top level —
+  // different plan types use different field names, so we try each in order.
+  function extractCredit(data: Record<string, unknown>): number | null {
     const candidates = [
-      details.apiCredit,
-      details.apiCreditBalance,
-      details.apiPaidTokens,
-      details.apiSubscriptionTokens,
-      details.tokenBalance,
-      details.credits,
-      (details.user as any)?.apiCredit,
+      data.apiCredit,
+      data.apiCreditBalance,
+      data.apiPaidTokens,
+      data.apiSubscriptionTokens,
+      data.tokenBalance,
+      data.credits,
+      data.userApiCredit,
     ];
     for (const c of candidates) {
       if (c != null) {
@@ -211,57 +212,33 @@ export function App() {
     return null;
   }
 
-  // Call Leonardo's /me endpoint DIRECTLY from the browser — no proxy needed.
-  // This is reliable even when the Render server is cold or undeployed.
-  const fetchBalanceDirect = useCallback(async (key: string): Promise<number | null> => {
-    const res = await fetch("https://cloud.leonardo.ai/api/rest/v1/me", {
-      headers: { Authorization: `Bearer ${key}` },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const details = data?.user_details?.[0];
-    if (!details) return null;
-    return extractCredit(details);
-  }, []);
-
-  // Fetch balance — tries direct Leonardo call first, falls back to proxy.
+  // Fetch balance via the Render proxy — the scalable path for all users.
+  // Render server calls Leonardo /me server-side with the user's key,
+  // keeping API keys out of browser network traffic.
   const fetchBalance = useCallback(async () => {
     if (!apiKey.trim()) return;
     setBalanceLoading(true);
     setBalanceFailed(false);
-    try {
-      // Primary: call Leonardo directly (fastest, no cold-start dependency)
-      const direct = await fetchBalanceDirect(apiKey.trim());
-      if (direct !== null) {
-        setBalance(direct);
-        setBalanceLoading(false);
-        setBalanceFailed(false);
-        return;
-      }
-    } catch { /* CORS or network — fall through to proxy */ }
-
-    // Fallback: go through the proxy (handles CORS if direct call blocked)
-    // The proxy now returns all credit fields flat — same shape as user_details[0]
-    const RETRIES = 3;
-    const DELAY   = 8000;
+    const RETRIES = 4;
+    const DELAY   = 8000; // wait for Render free-tier cold start if needed
     for (let i = 0; i < RETRIES; i++) {
       if (i > 0) await new Promise((r) => setTimeout(r, DELAY));
       try {
         const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
         if (!res.ok) continue;
         const data = await res.json() as Record<string, unknown>;
-        const credit = extractCredit(data);   // proxy now returns fields at top level
+        const credit = extractCredit(data);
         if (credit !== null) {
           setBalance(credit);
           setBalanceLoading(false);
           setBalanceFailed(false);
           return;
         }
-      } catch { /* try next attempt */ }
+      } catch { /* retry */ }
     }
     setBalanceLoading(false);
     setBalanceFailed(true);
-  }, [buildHeaders, apiKey, fetchBalanceDirect]);
+  }, [buildHeaders, apiKey]);
 
   // Fetch balance when API key is set
   useEffect(() => {
@@ -352,69 +329,40 @@ export function App() {
     }, 1000);
   };
 
-  // Test the API key — calls Leonardo /me directly from the browser, no proxy needed
+  // Test the API key via the Render proxy — shows exactly what Leonardo returns
   const handleTestKey = async () => {
     const key = apiKeyInput.trim() || apiKey.trim();
     if (!key) return;
     setKeyTestLoading(true);
     setKeyTestResult(null);
     try {
-      const res = await fetch("https://cloud.leonardo.ai/api/rest/v1/me", {
-        headers: { Authorization: `Bearer ${key}` },
+      const res = await fetch(`${BACKEND_URL}/api/test-key`, {
+        headers: { "x-leo-api-key": key },
       });
-      if (!res.ok) {
-        setKeyTestResult(`❌ Leonardo returned HTTP ${res.status}. Check your API key is correct and active.`);
-        return;
-      }
       const data = await res.json();
-      const details = data?.user_details?.[0];
-      if (!details) {
-        setKeyTestResult("❌ Unexpected response — no user_details in Leonardo /me response.");
+      if (!res.ok) {
+        setKeyTestResult(`❌ Error ${res.status}: ${data.error || "Unknown error"}`);
         return;
       }
-      const u = details.user || {};
-      const credit = extractCredit(details);
+      const cf = data.creditFields || {};
+      const credit = extractCredit(cf);
       const lines = [
-        `✓ Connected as: ${u.username || u.id || "(unknown)"}`,
+        `✓ Connected as: ${data.username || data.userId || "(unknown)"}`,
         `─────────────────────────`,
-        `apiCredit:             ${details.apiCredit            ?? "null"}`,
-        `apiCreditBalance:      ${details.apiCreditBalance     ?? "null"}`,
-        `apiPaidTokens:         ${details.apiPaidTokens        ?? "null"}`,
-        `apiSubscriptionTokens: ${details.apiSubscriptionTokens ?? "null"}`,
-        `tokenBalance:          ${details.tokenBalance         ?? "null"}`,
-        `credits:               ${details.credits              ?? "null"}`,
+        `apiCredit:             ${cf.apiCredit            ?? "null"}`,
+        `apiCreditBalance:      ${cf.apiCreditBalance     ?? "null"}`,
+        `apiPaidTokens:         ${cf.apiPaidTokens        ?? "null"}`,
+        `apiSubscriptionTokens: ${cf.apiSubscriptionTokens ?? "null"}`,
+        `tokenBalance:          ${cf.tokenBalance         ?? "null"}`,
+        `credits:               ${cf.credits              ?? "null"}`,
         `─────────────────────────`,
-        `→ Balance pill will show: ${credit !== null ? credit.toLocaleString() : "— (all null)"}`,
+        `→ Balance will show: ${credit !== null ? credit.toLocaleString() : "— (all fields null)"}`,
       ];
       setKeyTestResult(lines.join("\n"));
-      // Update balance pill immediately
-      if (credit !== null) {
-        setBalance(credit);
-        setBalanceFailed(false);
-      } else {
-        setBalanceFailed(true);
-      }
+      if (credit !== null) { setBalance(credit); setBalanceFailed(false); }
+      else setBalanceFailed(true);
     } catch (err: any) {
-      // If direct call is blocked by CORS, try via proxy as fallback
-      try {
-        const res2 = await fetch(`${BACKEND_URL}/api/test-key`, {
-          headers: { "x-leo-api-key": key },
-        });
-        const data2 = await res2.json();
-        if (res2.ok) {
-          const cf = data2.creditFields || {};
-          const lines = [
-            `✓ Connected (via proxy) as: ${data2.username || data2.userId || "(unknown)"}`,
-            `─────────────────────────`,
-            `apiCredit:             ${cf.apiCredit            ?? "null"}`,
-            `apiSubscriptionTokens: ${cf.apiSubscriptionTokens ?? "null"}`,
-            `apiPaidTokens:         ${cf.apiPaidTokens        ?? "null"}`,
-          ];
-          setKeyTestResult(lines.join("\n"));
-          return;
-        }
-      } catch { /* both failed */ }
-      setKeyTestResult(`❌ Network error: ${err.message}\nThis may be a temporary connection issue.`);
+      setKeyTestResult(`❌ Network error: ${err.message}`);
     } finally {
       setKeyTestLoading(false);
     }
