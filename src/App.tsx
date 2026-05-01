@@ -511,10 +511,17 @@ export function App() {
       {/* Quality + Count */}
       <div className="row-3col">
         <div className="section">
-          <label className="label">QUALITY</label>
-          <div className="quality-picker">
+          <label className={`label ${!currentModel.hasQuality ? "label-muted" : ""}`}>
+            QUALITY {!currentModel.hasQuality && <span className="label-na">— not available for this model</span>}
+          </label>
+          <div className={`quality-picker ${!currentModel.hasQuality ? "picker-disabled" : ""}`}>
             {QUALITY_OPTIONS.map((q) => (
-              <button key={q} className={`quality-btn ${quality === q ? "active" : ""}`} onClick={() => setQuality(q)} disabled={isGenerating}>{q}</button>
+              <button
+                key={q}
+                className={`quality-btn ${quality === q && currentModel.hasQuality ? "active" : ""}`}
+                onClick={() => currentModel.hasQuality && setQuality(q)}
+                disabled={isGenerating || !currentModel.hasQuality}
+              >{q}</button>
             ))}
           </div>
         </div>

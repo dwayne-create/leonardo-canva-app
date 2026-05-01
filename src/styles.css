@@ -154,8 +154,36 @@ body {
 }
 
 .quality-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Greyed-out state when model doesn't support the control */
+.picker-disabled .quality-btn {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+.picker-disabled .quality-btn.active {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #9ca3af;
+}
+
+.label-muted {
+  color: #9ca3af;
+}
+
+.label-na {
+  font-size: 9px;
+  font-weight: 400;
+  color: #9ca3af;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* Count select */
