@@ -998,7 +998,7 @@ body {
   position: relative;
 }
 
-/* Container for folder + trash buttons — sits top-right */
+/* Container for folder + trash buttons — always visible, top-right */
 .library-thumb-actions {
   position: absolute;
   top: 5px;
@@ -1006,7 +1006,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  opacity: 0;
+  opacity: 0.75;
   transition: opacity 0.15s;
 }
 
