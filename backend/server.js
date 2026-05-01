@@ -68,9 +68,8 @@ async function uploadInitImage(base64DataUrl, apiKey) {
 // Models that use image_reference_strength (GPT Image 2 ignores it — omit)
 const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "gemini-2.5-flash-image", "nano-banana-2", "seedream-4.0", "seedream-4.5", "flux-2-pro", "ideogram-v3.0"]);
 
-// Models where quality param (LOW/MEDIUM/HIGH) is supported
-// NOTE: gpt-image-2 V2 API returns "Unexpected variable quality" — disabled until correct field is confirmed
-const MODELS_WITH_QUALITY = new Set(["ideogram-v3.0"]);
+// Models where quality param (LOW/MEDIUM/HIGH) is supported (confirmed by V2 handover doc)
+const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v3.0"]);
 
 app.post("/api/generate", async (req, res) => {
   const { modelId, prompt, width, height, num_images = 1, quality, refImages } = req.body;
@@ -108,11 +107,12 @@ app.post("/api/generate", async (req, res) => {
 
   try {
     const body = {
-      model:    modelId,
+      model:           modelId,
       prompt,
-      width:    width  || 1024,
-      height:   height || 1024,
-      quantity: Math.min(num_images, 4),
+      width:           width  || 1024,
+      height:          height || 1024,
+      quantity:        Math.min(num_images, 4),
+      prompt_enhance:  "OFF",
       ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
       ...(refStrength  ? { image_reference_strength: refStrength } : {}),
       ...(qualityParam ? { quality: qualityParam }                  : {}),
