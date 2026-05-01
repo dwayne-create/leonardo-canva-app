@@ -77,14 +77,14 @@ const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v
 const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "seedream-4.5", "seedream-4.0", "flux-2-pro", "ideogram-v3.0"]);
 
 app.post("/api/generate", async (req, res) => {
-  const { modelId, prompt, width, height, num_images = 1, quality, refImages } = req.body;
+  const { modelId, prompt, width, height, num_images = 1, quality, refImages, refImageIds } = req.body;
   const apiKey = resolveKey(req);
 
   if (!prompt) {
     return res.status(400).json({ message: "prompt is required" });
   }
 
-  // Upload ALL reference images (up to 6 for most models)
+  // Upload base64 reference images (from computer)
   const uploadedRefIds = [];
   if (refImages && refImages.length > 0) {
     for (const dataUrl of refImages) {
@@ -105,15 +105,20 @@ app.post("/api/generate", async (req, res) => {
     ? (qualityMap[quality] || "MEDIUM")
     : undefined;
 
-  // Build guidances.image_reference if we have ref images
+  // Build guidances.image_reference combining uploaded + existing library images
   const hasRefStrength = MODELS_WITH_REF_STRENGTH.has(modelId);
-  const guidances = uploadedRefIds.length > 0
-    ? {
-        image_reference: uploadedRefIds.map(id => ({
-          image: { id, type: "UPLOADED" },
-          ...(hasRefStrength ? { strength: "MID" } : {}),
-        })),
-      }
+  const allRefEntries = [
+    ...uploadedRefIds.map(id => ({
+      image: { id, type: "UPLOADED" },
+      ...(hasRefStrength ? { strength: "MID" } : {}),
+    })),
+    ...(refImageIds || []).map((id) => ({
+      image: { id, type: "GENERATED" },
+      ...(hasRefStrength ? { strength: "MID" } : {}),
+    })),
+  ];
+  const guidances = allRefEntries.length > 0
+    ? { image_reference: allRefEntries }
     : undefined;
 
   try {

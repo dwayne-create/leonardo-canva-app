@@ -87,6 +87,13 @@ interface RefImage {
   name: string;
 }
 
+// A reference image sourced from the user's Leonardo library (already on Leonardo's servers)
+interface LibRefImage {
+  id: string;   // Leonardo generated_image id — passed as type:"GENERATED"
+  url: string;  // thumbnail URL for display only
+  prompt: string;
+}
+
 interface LibraryImage {
   id: string;
   generationId: string;
@@ -144,9 +151,17 @@ export function App() {
   const [previewUrls, setPreviewUrls]   = useState<string[]>([]);
   const [error, setError]               = useState<string | null>(null);
   const [refImages, setRefImages]       = useState<RefImage[]>([]);
+  const [libRefImages, setLibRefImages] = useState<LibRefImage[]>([]);
   const [refWarning, setRefWarning]     = useState<string | null>(null);
   const [dimErrors, setDimErrors]       = useState<string[]>([]);
   const fileInputRef                    = useRef<HTMLInputElement>(null);
+
+  // Library picker modal state
+  const [showLibPicker, setShowLibPicker]         = useState(false);
+  const [libPickerImages, setLibPickerImages]     = useState<LibraryImage[]>([]);
+  const [libPickerLoading, setLibPickerLoading]   = useState(false);
+  const [libPickerError, setLibPickerError]       = useState<string | null>(null);
+  const [libPickerSelected, setLibPickerSelected] = useState<Set<string>>(new Set());
 
   // API key state
   const [apiKey, setApiKey]           = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) || "");
@@ -179,6 +194,50 @@ export function App() {
   const [deletingId, setDeletingId]             = useState<string | null>(null);
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
+
+  // Total refs across both sources
+  const totalRefs = refImages.length + libRefImages.length;
+
+  // Open library picker — fetch images on first open
+  const openLibPicker = useCallback(async () => {
+    setShowLibPicker(true);
+    setLibPickerSelected(new Set());
+    if (libPickerImages.length > 0) return; // already loaded
+    setLibPickerLoading(true);
+    setLibPickerError(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/library?limit=40`, { headers: buildHeaders() });
+      if (!res.ok) throw new Error("Failed to load library");
+      const data = await res.json();
+      setLibPickerImages(data.images || []);
+    } catch (err: any) {
+      setLibPickerError(err.message || "Failed to load library");
+    } finally {
+      setLibPickerLoading(false);
+    }
+  }, [libPickerImages.length, buildHeaders]);
+
+  const toggleLibPickerItem = useCallback((id: string) => {
+    setLibPickerSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); return next; }
+      const slotsLeft = currentModel.maxRefs - totalRefs;
+      if (next.size >= slotsLeft) return prev; // at cap
+      next.add(id);
+      return next;
+    });
+  }, [currentModel.maxRefs, totalRefs]);
+
+  const confirmLibPicker = useCallback(() => {
+    const toAdd = libPickerImages
+      .filter((img) => libPickerSelected.has(img.id))
+      .map((img) => ({ id: img.id, url: img.url, prompt: img.prompt }));
+    setLibRefImages((prev) => {
+      const existingIds = new Set(prev.map((r) => r.id));
+      return [...prev, ...toAdd.filter((a) => !existingIds.has(a.id))];
+    });
+    setShowLibPicker(false);
+  }, [libPickerImages, libPickerSelected]);
 
   // Live dimension validation (GPT Image 2 has 4 simultaneous constraints)
   useEffect(() => {
@@ -226,11 +285,20 @@ export function App() {
 
     // Trim refs if the new model allows fewer
     setRefImages((prev) => {
-      if (prev.length > newModel.maxRefs) {
-        setRefWarning(
-          `${newModel.name} supports up to ${newModel.maxRefs} reference images. ${prev.length - newModel.maxRefs} image${prev.length - newModel.maxRefs > 1 ? "s were" : " was"} removed.`
-        );
+      const combined = prev.length; // will check total after lib refs set too
+      if (combined > newModel.maxRefs) {
         return prev.slice(0, newModel.maxRefs);
+      }
+      return prev;
+    });
+    setLibRefImages((prev) => {
+      const totalAfterFileTrim = Math.min(refImages.length, newModel.maxRefs);
+      const libSlots = newModel.maxRefs - totalAfterFileTrim;
+      if (prev.length > libSlots) {
+        setRefWarning(
+          `${newModel.name} supports up to ${newModel.maxRefs} reference images total. Some were removed.`
+        );
+        return prev.slice(0, Math.max(0, libSlots));
       }
       return prev;
     });
@@ -356,7 +424,8 @@ export function App() {
           height,
           num_images: count,
           quality,
-          refImages: refImages.map((r) => r.dataUrl),
+          refImages:    refImages.map((r) => r.dataUrl),        // base64 → uploaded
+          refImageIds:  libRefImages.map((r) => r.id),          // already on Leonardo → type:GENERATED
         }),
       });
       if (!genRes.ok) {
@@ -398,6 +467,59 @@ export function App() {
 
   return (
     <div className="app">
+
+      {/* Library reference picker modal */}
+      {showLibPicker && (
+        <div className="modal-overlay" onClick={() => setShowLibPicker(false)}>
+          <div className="lib-picker" onClick={(e) => e.stopPropagation()}>
+            <div className="lib-picker-header">
+              <span className="lib-picker-title">Add from library</span>
+              <button className="lib-picker-close" onClick={() => setShowLibPicker(false)}>×</button>
+            </div>
+            <div className="lib-picker-sub">
+              Select up to {currentModel.maxRefs - totalRefs} image{currentModel.maxRefs - totalRefs !== 1 ? "s" : ""}
+            </div>
+
+            {libPickerLoading && <div className="lib-picker-empty">Loading your library...</div>}
+            {libPickerError  && <div className="lib-picker-empty lib-picker-err">{libPickerError}</div>}
+            {!libPickerLoading && !libPickerError && libPickerImages.length === 0 && (
+              <div className="lib-picker-empty">No images in your library yet. Generate some first!</div>
+            )}
+
+            {libPickerImages.length > 0 && (
+              <div className="lib-picker-grid">
+                {libPickerImages.map((img) => {
+                  const alreadyAdded = libRefImages.some((r) => r.id === img.id);
+                  const selected = libPickerSelected.has(img.id);
+                  return (
+                    <div
+                      key={img.id}
+                      className={`lib-picker-item ${selected ? "selected" : ""} ${alreadyAdded ? "already-added" : ""}`}
+                      onClick={() => !alreadyAdded && toggleLibPickerItem(img.id)}
+                      title={img.prompt}
+                    >
+                      <img src={img.url} alt={img.prompt} className="lib-picker-thumb" />
+                      {selected    && <div className="lib-picker-check">✓</div>}
+                      {alreadyAdded && <div className="lib-picker-check lib-picker-check-added">✦</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="lib-picker-footer">
+              <button className="modal-cancel" onClick={() => setShowLibPicker(false)}>Cancel</button>
+              <button
+                className="generate-btn lib-picker-confirm"
+                onClick={confirmLibPicker}
+                disabled={libPickerSelected.size === 0}
+              >
+                Add {libPickerSelected.size > 0 ? libPickerSelected.size : ""} image{libPickerSelected.size !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation modal */}
       {confirmDeleteId && (
@@ -638,12 +760,13 @@ export function App() {
       <div className="section">
         <div className="refs-header">
           <label className="label">REFERENCE IMAGES</label>
-          <span className="refs-counter">{refImages.length}/{currentModel.maxRefs}</span>
+          <span className="refs-counter">{totalRefs}/{currentModel.maxRefs}</span>
         </div>
 
         {refWarning && <div className="ref-warning">{refWarning}</div>}
 
-        {refImages.length > 0 && (
+        {/* Thumbnails — computer uploads */}
+        {(refImages.length > 0 || libRefImages.length > 0) && (
           <div className="refs-grid">
             {refImages.map((r) => (
               <div key={r.id} className="ref-item">
@@ -651,16 +774,26 @@ export function App() {
                 <button className="ref-remove" onClick={() => removeRef(r.id)} disabled={isGenerating} title="Remove">×</button>
               </div>
             ))}
+            {libRefImages.map((r) => (
+              <div key={r.id} className="ref-item ref-item-lib">
+                <img src={r.url} alt={r.prompt} className="ref-thumb" title={r.prompt} />
+                <button className="ref-remove" onClick={() => setLibRefImages((prev) => prev.filter((x) => x.id !== r.id))} disabled={isGenerating} title="Remove">×</button>
+                <span className="ref-lib-badge" title="From library">✦</span>
+              </div>
+            ))}
           </div>
         )}
 
-        {refImages.length < currentModel.maxRefs && (
-          <>
+        {totalRefs < currentModel.maxRefs && (
+          <div className="refs-add-row">
             <button className="refs-add-btn" onClick={() => fileInputRef.current?.click()} disabled={isGenerating}>
-              + Add reference image
+              + From computer
+            </button>
+            <button className="refs-add-btn refs-add-btn-lib" onClick={openLibPicker} disabled={isGenerating}>
+              + From library
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleRefUpload} />
-          </>
+          </div>
         )}
         <div className="refs-hint">Optional — guide the style or composition of the output</div>
       </div>
