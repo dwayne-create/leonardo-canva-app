@@ -41,7 +41,7 @@ const MODELS = [
   { id: "gpt-image-2",    name: "GPT Image 2",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 3824, multipleOf: 16, hasQuality: true  },
   { id: "gemini-image-2", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4, validDimensions: NB_PRO_DIMS,                        minDim: 672,  maxDim: 5504, multipleOf: 1,  hasQuality: false },
   { id: "seedream-4.5",   name: "Seedream 4.5",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 4096, multipleOf: 8,  hasQuality: false },
-  { id: "flux-2-pro",     name: "Flux.2 Pro",      maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false },
+  { id: "flux-2-pro",     name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false },
 ];
 
 // All presets verified valid for ALL four models:
