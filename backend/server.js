@@ -151,7 +151,8 @@ app.post("/api/generate", async (req, res) => {
       return res.status(response.status).json({ message: errMsg, debug: data });
     }
 
-    const generationId = data?.generationId;
+    // V2 REST response wraps result in a "generate" object: { generate: { generationId, apiCreditCost, cost } }
+    const generationId = data?.generate?.generationId || data?.generationId;
     if (!generationId) {
       console.error(`  [DEBUG] Unexpected V2 response:`, JSON.stringify(data));
       return res.status(500).json({ message: "No generationId returned from Leonardo", debug: data });
