@@ -108,12 +108,11 @@ app.post("/api/generate", async (req, res) => {
 
   try {
     const body = {
-      model:          modelId,
+      model:    modelId,
       prompt,
-      width:          width  || 1024,
-      height:         height || 1024,
-      quantity:       Math.min(num_images, 4),
-      prompt_enhance: "OFF",
+      width:    width  || 1024,
+      height:   height || 1024,
+      quantity: Math.min(num_images, 4),
       ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
       ...(refStrength  ? { image_reference_strength: refStrength } : {}),
       ...(qualityParam ? { quality: qualityParam }                  : {}),
