@@ -444,10 +444,19 @@ export function App() {
     setCollectionsLoading(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/collections`, { headers: buildHeaders() });
-      if (!res.ok) return; // silently fail — collections are non-critical
       const data = await res.json();
+      if (!res.ok) {
+        // Surface the error so we can debug which endpoint path is wrong
+        console.error("[collections] error:", data);
+        setCollectionActionError(data.message || `Error ${res.status} fetching collections`);
+        return;
+      }
+      console.log("[collections] raw response:", data);
       setCollections(data.collections || []);
-    } catch { /* non-critical */ } finally {
+    } catch (err: any) {
+      console.error("[collections] fetch failed:", err);
+      setCollectionActionError(err.message);
+    } finally {
       setCollectionsLoading(false);
     }
   }, [buildHeaders]);
@@ -778,7 +787,7 @@ export function App() {
               </div>
             )}
 
-            {!collectionsLoading && collections.length === 0 && (
+            {!collectionsLoading && collections.length === 0 && !collectionActionError && (
               <div className="collection-picker-empty">No collections yet — create one below</div>
             )}
 

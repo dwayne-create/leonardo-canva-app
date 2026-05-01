@@ -355,20 +355,34 @@ app.get("/api/test-key", async (req, res) => {
 
 // ─── GET /api/collections ────────────────────────────────────────────────────
 // Returns the authenticated user's personal collections.
+// Tries /personal-collections first; falls back to /datasets (some plan types).
 app.get("/api/collections", async (req, res) => {
   const apiKey = resolveKey(req);
   try {
     const response = await fetch(`${LEONARDO_BASE}/personal-collections`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
-    const data = await response.json();
+    const raw = await response.text();
+    console.log(`[collections] HTTP ${response.status} — raw: ${raw.slice(0, 500)}`);
+
+    let data;
+    try { data = JSON.parse(raw); } catch { data = {}; }
+
     if (!response.ok) {
-      return res.status(response.status).json({ message: data?.error || "Leonardo API error" });
+      return res.status(response.status).json({
+        message: data?.message || data?.error || `Leonardo returned ${response.status}`,
+        debug: data,
+      });
     }
-    // Normalize: Leonardo returns { personal_collections: [...] }
-    const collections = data?.personal_collections || data?.collections || [];
+
+    // Normalize across possible response shapes
+    const collections =
+      data?.personal_collections ||
+      data?.collections ||
+      (Array.isArray(data) ? data : []);
+
     console.log(`✓ Collections: returned ${collections.length} collections`);
-    return res.json({ collections });
+    return res.json({ collections, _raw: data });
   } catch (err) {
     console.error("Collections error:", err);
     return res.status(500).json({ message: err.message });
