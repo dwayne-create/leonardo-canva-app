@@ -12,7 +12,14 @@ dotenv.config({ path: join(__dirname, "..", ".env") });
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
-const LEONARDO_BASE = "https://cloud.leonardo.ai/api/rest/v1";
+const LEONARDO_BASE    = "https://cloud.leonardo.ai/api/rest/v1";
+const LEONARDO_GRAPHQL = "https://api.leonardo.ai/v1/graphql";
+
+// Helper: ensure a generation ID has UUID hyphens (GraphQL returns no-hyphen hex)
+function toUUID(id) {
+  if (!id || id.includes("-")) return id;
+  return `${id.slice(0,8)}-${id.slice(8,12)}-${id.slice(12,16)}-${id.slice(16,20)}-${id.slice(20)}`;
+}
 
 // Helper: resolve the API key to use — user-supplied key takes priority
 function resolveKey(req) {
@@ -107,57 +114,62 @@ app.post("/api/generate", async (req, res) => {
     : undefined;
 
   try {
-    const body = {
-      modelId:    modelId,
+    // Build the parameters object (matches what Leonardo's own website sends via GraphQL)
+    const parameters = {
       prompt,
-      width:      width  || 1024,
-      height:     height || 1024,
-      num_images: Math.min(num_images, 4),
+      width:    width  || 1024,
+      height:   height || 1024,
+      quantity: Math.min(num_images, 4),
       ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
       ...(refStrength  ? { image_reference_strength: refStrength } : {}),
       ...(qualityParam ? { quality: qualityParam }                  : {}),
     };
 
-    // ── DEBUG: log the exact body sent to Leonardo ──
-    console.log(`  [DEBUG] Full body to Leonardo:`, JSON.stringify({
-      ...body,
-      image_reference_ids: body.image_reference_ids ? `[${body.image_reference_ids.length} ids]` : undefined,
-    }));
+    const graphqlBody = {
+      operationName: "Generate",
+      variables: {
+        request: {
+          model: modelId,
+          public: false,
+          parameters,
+        },
+      },
+      query: `mutation Generate($request: CreateGenerationRequest!) {
+        generate(request: $request) {
+          apiCreditCost
+          generationId
+        }
+      }`,
+    };
 
-    const response = await fetch(`${LEONARDO_BASE}/generations`, {
+    console.log(`  [DEBUG] GraphQL request — model: ${modelId}, dims: ${parameters.width}x${parameters.height}, qty: ${parameters.quantity}${qualityParam ? `, quality: ${qualityParam}` : ""}`);
+
+    const response = await fetch(LEONARDO_GRAPHQL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(graphqlBody),
     });
 
     const data = await response.json();
 
-    // V2 can return 200 with an errors array — check both
-    // Also check data.errors[] as per V2 spec
-    const hasError = !response.ok
-      || (Array.isArray(data) && data.some(d => d.error))
-      || (data?.errors && data.errors.length > 0);
-
-    if (hasError) {
-      const errMsg = data?.error
-        || data?.[0]?.error
-        || data?.errors?.[0]?.message
-        || data?.errors?.[0]?.error
-        || "Leonardo API error";
-      console.error(`  [DEBUG] Leonardo error response (HTTP ${response.status}):`, JSON.stringify(data));
-      return res.status(response.ok ? 400 : response.status).json({ message: errMsg, debug: data });
+    // GraphQL errors come in data.errors array
+    if (data?.errors && data.errors.length > 0) {
+      const errMsg = data.errors[0]?.message || "Leonardo GraphQL error";
+      console.error(`  [DEBUG] GraphQL error:`, JSON.stringify(data.errors));
+      return res.status(400).json({ message: errMsg, debug: data.errors });
     }
 
-    const generationId = data?.sdGenerationJob?.generationId;
+    const generationId = data?.data?.generate?.generationId;
     if (!generationId) {
+      console.error(`  [DEBUG] Unexpected response:`, JSON.stringify(data));
       return res.status(500).json({ message: "No generationId returned from Leonardo" });
     }
 
     console.log(`✓ Generation started: ${generationId}`);
-    return res.json({ generationId });
+    return res.json({ generationId: toUUID(generationId) });
   } catch (err) {
     console.error("Generate error:", err);
     return res.status(500).json({ message: err.message });
