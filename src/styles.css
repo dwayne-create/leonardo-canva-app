@@ -53,7 +53,7 @@ body {
 }
 
 .logo-badge {
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: linear-gradient(135deg, #6E60EE, #5548D9);
   color: white;
   font-size: 9px;
   font-weight: 600;
@@ -104,8 +104,8 @@ body {
 
 .select:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+  border-color: #6E60EE;
+  box-shadow: 0 0 0 2px rgba(110, 96, 238, 0.1);
 }
 
 .select:disabled {
@@ -142,13 +142,13 @@ body {
 }
 
 .quality-btn:hover:not(:disabled) {
-  border-color: #7c3aed;
+  border-color: #6E60EE;
   color: #1a1a2e;
 }
 
 .quality-btn.active {
-  background: #7c3aed;
-  border-color: #7c3aed;
+  background: #6E60EE;
+  border-color: #6E60EE;
   color: #fff;
   font-weight: 600;
 }
@@ -222,8 +222,8 @@ body {
 
 .count-select:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+  border-color: #6E60EE;
+  box-shadow: 0 0 0 2px rgba(110, 96, 238, 0.1);
 }
 
 .count-select:disabled {
@@ -251,14 +251,14 @@ body {
 }
 
 .preset-btn:hover:not(:disabled) {
-  border-color: #7c3aed;
+  border-color: #6E60EE;
   color: #1a1a2e;
 }
 
 .preset-btn.active {
-  background: rgba(124, 58, 237, 0.08);
-  border-color: #7c3aed;
-  color: #7c3aed;
+  background: rgba(110, 96, 238, 0.08);
+  border-color: #6E60EE;
+  color: #6E60EE;
   font-weight: 600;
 }
 
@@ -277,7 +277,7 @@ body {
 .slider-val {
   font-size: 12px;
   font-weight: 600;
-  color: #7c3aed;
+  color: #6E60EE;
 }
 
 .slider {
@@ -294,10 +294,10 @@ body {
   appearance: none;
   width: 16px;
   height: 16px;
-  background: #7c3aed;
+  background: #6E60EE;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 1px 4px rgba(110, 96, 238, 0.3);
 }
 
 .slider:disabled {
@@ -321,8 +321,8 @@ body {
 .refs-counter {
   font-size: 11px;
   font-weight: 600;
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.08);
+  color: #6E60EE;
+  background: rgba(110, 96, 238, 0.08);
   padding: 2px 7px;
   border-radius: 10px;
 }
@@ -399,9 +399,9 @@ body {
 }
 
 .refs-add-btn:hover:not(:disabled) {
-  border-color: #7c3aed;
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.04);
+  border-color: #6E60EE;
+  color: #6E60EE;
+  background: rgba(110, 96, 238, 0.04);
 }
 
 .refs-add-btn:disabled {
@@ -411,14 +411,14 @@ body {
 
 .refs-add-btn-lib {
   border-style: solid;
-  background: rgba(124, 58, 237, 0.04);
-  border-color: rgba(124, 58, 237, 0.25);
-  color: #7c3aed;
+  background: rgba(110, 96, 238, 0.04);
+  border-color: rgba(110, 96, 238, 0.25);
+  color: #6E60EE;
 }
 
 .refs-add-btn-lib:hover:not(:disabled) {
-  background: rgba(124, 58, 237, 0.1);
-  border-color: #7c3aed;
+  background: rgba(110, 96, 238, 0.1);
+  border-color: #6E60EE;
 }
 
 /* Library ref badge (✦ icon on lib-sourced thumbnails) */
@@ -430,7 +430,7 @@ body {
   position: absolute;
   bottom: 2px;
   left: 2px;
-  background: #7c3aed;
+  background: #6E60EE;
   color: white;
   font-size: 7px;
   border-radius: 3px;
@@ -444,7 +444,7 @@ body {
   border-radius: 14px;
   width: calc(100% - 32px);
   max-width: 340px;
-  max-height: 80vh;
+  max-height: 82vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -456,6 +456,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px 6px;
+  flex-shrink: 0;
 }
 
 .lib-picker-title {
@@ -478,6 +479,7 @@ body {
   font-size: 11px;
   color: #6b7280;
   padding: 0 16px 10px;
+  flex-shrink: 0;
 }
 
 .lib-picker-empty {
@@ -491,13 +493,15 @@ body {
   color: #dc2626;
 }
 
+/* Grid — min-height: 0 is critical so flex child can actually scroll */
 .lib-picker-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
+  gap: 5px;
   padding: 0 12px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .lib-picker-item {
@@ -508,10 +512,11 @@ body {
   aspect-ratio: 1;
   border: 2px solid transparent;
   transition: border-color 0.15s;
+  background: #f3f4f6;
 }
 
 .lib-picker-item.selected {
-  border-color: #7c3aed;
+  border-color: #6E60EE;
 }
 
 .lib-picker-item.already-added {
@@ -530,7 +535,7 @@ body {
   position: absolute;
   top: 4px;
   right: 4px;
-  background: #7c3aed;
+  background: #6E60EE;
   color: white;
   border-radius: 50%;
   width: 18px;
@@ -546,11 +551,58 @@ body {
   background: #9ca3af;
 }
 
+/* Pagination bar inside lib picker */
+.lib-picker-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px 4px;
+  flex-shrink: 0;
+}
+
+.lib-page-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+.lib-page-btn:hover:not(:disabled) {
+  border-color: #6E60EE;
+  color: #6E60EE;
+  background: rgba(110, 96, 238, 0.06);
+}
+
+.lib-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.lib-page-info {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  min-width: 44px;
+  text-align: center;
+}
+
 .lib-picker-footer {
   display: flex;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 10px 16px 14px;
   border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .lib-picker-confirm {
@@ -581,8 +633,8 @@ body {
 
 .prompt-textarea:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+  border-color: #6E60EE;
+  box-shadow: 0 0 0 2px rgba(110, 96, 238, 0.1);
 }
 
 .prompt-textarea:disabled {
@@ -595,13 +647,13 @@ body {
 
 /* Status / error */
 .status-banner {
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
-  border-left: 3px solid #7c3aed;
+  background: #f0effe;
+  border: 1px solid #d4cffc;
+  border-left: 3px solid #6E60EE;
   padding: 8px 10px;
   border-radius: 5px;
   font-size: 12px;
-  color: #6d28d9;
+  color: #4a3fc4;
 }
 
 .error-banner {
@@ -637,9 +689,9 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  background: rgba(124, 58, 237, 0.08);
-  color: #7c3aed;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: rgba(110, 96, 238, 0.08);
+  color: #6E60EE;
+  border: 1px solid rgba(110, 96, 238, 0.2);
   border-radius: 20px;
   padding: 4px 10px;
   font-size: 11px;
@@ -652,7 +704,7 @@ body {
 .generate-btn {
   width: 100%;
   padding: 13px;
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: linear-gradient(135deg, #6E60EE, #5548D9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -669,9 +721,9 @@ body {
 }
 
 .generate-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  background: linear-gradient(135deg, #7c72f0, #6E60EE);
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 4px 15px rgba(110, 96, 238, 0.35);
 }
 
 .generate-btn:disabled {
@@ -726,10 +778,10 @@ body {
 .add-btn {
   width: 100%;
   padding: 6px;
-  background: #f5f3ff;
-  border: 1px solid #7c3aed;
+  background: #f0effe;
+  border: 1px solid #6E60EE;
   border-radius: 5px;
-  color: #7c3aed;
+  color: #6E60EE;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -737,7 +789,7 @@ body {
 }
 
 .add-btn:hover:not(:disabled) {
-  background: #7c3aed;
+  background: #6E60EE;
   color: white;
 }
 
@@ -785,7 +837,7 @@ body {
 }
 
 .tab-btn-gear.active {
-  color: #7c3aed;
+  color: #6E60EE;
 }
 
 /* Library */
@@ -813,8 +865,8 @@ body {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  border-color: #7c3aed;
-  color: #7c3aed;
+  border-color: #6E60EE;
+  color: #6E60EE;
 }
 
 .refresh-btn:disabled {
@@ -967,8 +1019,8 @@ body {
 
 /* Onboarding banner */
 .onboarding-banner {
-  background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(79,70,229,0.06));
-  border: 1px solid rgba(124,58,237,0.15);
+  background: linear-gradient(135deg, rgba(110,96,238,0.06), rgba(85,72,217,0.06));
+  border: 1px solid rgba(110,96,238,0.15);
   border-radius: 8px;
   padding: 14px;
 }
@@ -1008,15 +1060,15 @@ body {
 
 .api-key-input:focus {
   outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+  border-color: #6E60EE;
+  box-shadow: 0 0 0 2px rgba(110, 96, 238, 0.1);
 }
 
 .save-key-btn {
   width: 100%;
   margin-top: 6px;
   padding: 9px;
-  background: #7c3aed;
+  background: #6E60EE;
   border: none;
   border-radius: 6px;
   color: white;
@@ -1027,7 +1079,7 @@ body {
 }
 
 .save-key-btn:hover {
-  background: #6d28d9;
+  background: #5b4fd9;
 }
 
 .save-key-btn.saved {

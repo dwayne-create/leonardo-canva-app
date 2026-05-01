@@ -106,6 +106,7 @@ interface LibraryImage {
 
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 const API_KEY_STORAGE = "prism_leo_api_key";
+const LIB_PICKER_PAGE_SIZE = 9; // 3×3 grid per page
 
 async function insertIntoCanva(url: string, width: number, height: number) {
   const asset = await upload({
@@ -162,6 +163,7 @@ export function App() {
   const [libPickerLoading, setLibPickerLoading]   = useState(false);
   const [libPickerError, setLibPickerError]       = useState<string | null>(null);
   const [libPickerSelected, setLibPickerSelected] = useState<Set<string>>(new Set());
+  const [libPickerPage, setLibPickerPage]         = useState(0);
 
   // API key state
   const [apiKey, setApiKey]           = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) || "");
@@ -171,12 +173,25 @@ export function App() {
   // Balance state
   const [balance, setBalance] = useState<number | null>(null);
 
+  // ── Build headers with optional user API key ──────────────────────────────
+  // IMPORTANT: must be defined BEFORE fetchBalance so the closure is correct.
+  const buildHeaders = useCallback((extra: Record<string, string> = {}) => {
+    const h: Record<string, string> = { ...extra };
+    if (apiKey.trim()) h["x-leo-api-key"] = apiKey.trim();
+    return h;
+  }, [apiKey]);
+
   const fetchBalance = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
       if (!res.ok) return;
       const data = await res.json();
-      if (typeof data.apiCredit === "number") setBalance(data.apiCredit);
+      // Accept number or numeric string — Leonardo may return either
+      const raw = data.apiCredit;
+      if (raw != null) {
+        const parsed = Number(raw);
+        if (!isNaN(parsed)) setBalance(parsed);
+      }
     } catch { /* silent — balance is non-critical */ }
   }, [buildHeaders]);
 
@@ -198,15 +213,23 @@ export function App() {
   // Total refs across both sources
   const totalRefs = refImages.length + libRefImages.length;
 
+  // Pagination helpers for lib picker
+  const libPickerTotalPages = Math.ceil(libPickerImages.length / LIB_PICKER_PAGE_SIZE);
+  const libPickerPageImages = libPickerImages.slice(
+    libPickerPage * LIB_PICKER_PAGE_SIZE,
+    (libPickerPage + 1) * LIB_PICKER_PAGE_SIZE
+  );
+
   // Open library picker — fetch images on first open
   const openLibPicker = useCallback(async () => {
     setShowLibPicker(true);
     setLibPickerSelected(new Set());
+    setLibPickerPage(0);
     if (libPickerImages.length > 0) return; // already loaded
     setLibPickerLoading(true);
     setLibPickerError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/library?limit=40`, { headers: buildHeaders() });
+      const res = await fetch(`${BACKEND_URL}/api/library?limit=60`, { headers: buildHeaders() });
       if (!res.ok) throw new Error("Failed to load library");
       const data = await res.json();
       setLibPickerImages(data.images || []);
@@ -247,13 +270,6 @@ export function App() {
       setDimErrors([]);
     }
   }, [modelId, width, height]);
-
-  // Build headers with optional user API key
-  const buildHeaders = useCallback((extra: Record<string, string> = {}) => {
-    const h: Record<string, string> = { ...extra };
-    if (apiKey.trim()) h["x-leo-api-key"] = apiKey.trim();
-    return h;
-  }, [apiKey]);
 
   // Save API key
   const handleSaveApiKey = () => {
@@ -487,24 +503,45 @@ export function App() {
             )}
 
             {libPickerImages.length > 0 && (
-              <div className="lib-picker-grid">
-                {libPickerImages.map((img) => {
-                  const alreadyAdded = libRefImages.some((r) => r.id === img.id);
-                  const selected = libPickerSelected.has(img.id);
-                  return (
-                    <div
-                      key={img.id}
-                      className={`lib-picker-item ${selected ? "selected" : ""} ${alreadyAdded ? "already-added" : ""}`}
-                      onClick={() => !alreadyAdded && toggleLibPickerItem(img.id)}
-                      title={img.prompt}
-                    >
-                      <img src={img.url} alt={img.prompt} className="lib-picker-thumb" />
-                      {selected    && <div className="lib-picker-check">✓</div>}
-                      {alreadyAdded && <div className="lib-picker-check lib-picker-check-added">✦</div>}
-                    </div>
-                  );
-                })}
-              </div>
+              <>
+                <div className="lib-picker-grid">
+                  {libPickerPageImages.map((img) => {
+                    const alreadyAdded = libRefImages.some((r) => r.id === img.id);
+                    const selected = libPickerSelected.has(img.id);
+                    return (
+                      <div
+                        key={img.id}
+                        className={`lib-picker-item ${selected ? "selected" : ""} ${alreadyAdded ? "already-added" : ""}`}
+                        onClick={() => !alreadyAdded && toggleLibPickerItem(img.id)}
+                        title={img.prompt}
+                      >
+                        <img src={img.url} alt={img.prompt} className="lib-picker-thumb" />
+                        {selected    && <div className="lib-picker-check">✓</div>}
+                        {alreadyAdded && <div className="lib-picker-check lib-picker-check-added">✦</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination */}
+                {libPickerTotalPages > 1 && (
+                  <div className="lib-picker-pagination">
+                    <button
+                      className="lib-page-btn"
+                      onClick={() => setLibPickerPage((p) => Math.max(0, p - 1))}
+                      disabled={libPickerPage === 0}
+                    >‹</button>
+                    <span className="lib-page-info">
+                      {libPickerPage + 1} / {libPickerTotalPages}
+                    </span>
+                    <button
+                      className="lib-page-btn"
+                      onClick={() => setLibPickerPage((p) => Math.min(libPickerTotalPages - 1, p + 1))}
+                      disabled={libPickerPage >= libPickerTotalPages - 1}
+                    >›</button>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="lib-picker-footer">
