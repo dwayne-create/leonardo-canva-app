@@ -181,11 +181,15 @@ body {
   font-style: italic;
 }
 
-/* Prism footer logo — generate tab only */
+/* Prism footer logo — fixed at bottom of viewport, generate tab only */
 .prism-footer-logo {
-  width: 100%;
-  margin-top: 28px;
-  padding-bottom: 8px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 12px 10px;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .prism-footer-logo svg {
