@@ -284,21 +284,50 @@ app.delete("/api/generation/:id", async (req, res) => {
 // ─── GET /api/balance ────────────────────────────────────────────────────────
 // Returns the authenticated user's API credit balance.
 app.get("/api/balance", async (req, res) => {
-  const apiKey = resolveKey(req);
+  const userSuppliedKey = req.headers["x-leo-api-key"];
+  const apiKey = userSuppliedKey || LEONARDO_API_KEY;
+
+  // If no user-supplied key, we're using the server env key which may not have
+  // credit info — return early with a clear indicator
+  if (!userSuppliedKey) {
+    return res.json({ apiCredit: null, tokenRenewalDate: null, noUserKey: true });
+  }
+
   try {
     const meRes = await fetch(`${LEONARDO_BASE}/me`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     const meData = await meRes.json();
     const details = meData?.user_details?.[0];
+
+    // Log full details so we can see exactly what Leonardo returns
+    console.log("[balance] user_details[0] keys:", details ? Object.keys(details) : "null");
+    console.log("[balance] full details:", JSON.stringify(details, null, 2));
+
     if (!details) {
       return res.status(500).json({ message: "Could not resolve user details" });
     }
+
+    // Try every known field path for API credits
+    const apiCredit =
+      details.apiCredit           ??  // standard field
+      details.apiCreditBalance    ??  // alternate name
+      details.tokenBalance        ??  // some accounts use this
+      details.credits             ??  // fallback
+      details.user?.apiCredit     ??  // sometimes nested under user
+      null;
+
+    console.log(`[balance] resolved apiCredit=${apiCredit}, raw apiCredit field=${details.apiCredit}`);
+
     return res.json({
-      apiCredit:         details.apiCredit         ?? null,
-      tokenRenewalDate:  details.user?.tokenRenewalDate ?? null,
+      apiCredit,
+      tokenRenewalDate:  details.user?.tokenRenewalDate ?? details.tokenRenewalDate ?? null,
+      // Include extra credit fields for debugging
+      _paidTokens:         details.apiPaidTokens         ?? null,
+      _subscriptionTokens: details.apiSubscriptionTokens ?? null,
     });
   } catch (err) {
+    console.error("[balance] error:", err.message);
     return res.status(500).json({ message: err.message });
   }
 });

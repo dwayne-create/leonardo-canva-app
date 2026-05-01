@@ -171,8 +171,9 @@ export function App() {
   const [apiKeySaved, setApiKeySaved] = useState(false);
 
   // Balance state
-  const [balance, setBalance]             = useState<number | null>(null);
+  const [balance, setBalance]               = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceFailed, setBalanceFailed]   = useState(false);   // showed loading but couldn't get a number
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
@@ -185,11 +186,29 @@ export function App() {
     return h;
   }, [apiKey]);
 
+  // Resolve a numeric credit value from the balance endpoint response.
+  // Leonardo's /me response shape can vary — try every known field.
+  function resolveCredit(data: Record<string, unknown>): number | null {
+    const candidates = [
+      data.apiCredit,
+      data._paidTokens,
+      data._subscriptionTokens,
+    ];
+    for (const c of candidates) {
+      if (c != null) {
+        const n = Number(c);
+        if (!isNaN(n)) return n;
+      }
+    }
+    return null;
+  }
+
   // Fetch balance with retry — Render free tier can take ~50s to cold-start.
   // Retries up to 4 times with 8s gaps so the pill appears even after a cold start.
   const fetchBalance = useCallback(async () => {
     if (!apiKey.trim()) return;
     setBalanceLoading(true);
+    setBalanceFailed(false);
     const RETRIES = 4;
     const DELAY   = 8000;
     for (let i = 0; i < RETRIES; i++) {
@@ -197,19 +216,19 @@ export function App() {
       try {
         const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
         if (!res.ok) continue;
-        const data = await res.json();
-        const raw = data.apiCredit;
-        if (raw != null) {
-          const parsed = Number(raw);
-          if (!isNaN(parsed)) {
-            setBalance(parsed);
-            setBalanceLoading(false);
-            return;
-          }
+        const data = await res.json() as Record<string, unknown>;
+        const credit = resolveCredit(data);
+        if (credit !== null) {
+          setBalance(credit);
+          setBalanceLoading(false);
+          setBalanceFailed(false);
+          return;
         }
       } catch { /* try next attempt */ }
     }
-    setBalanceLoading(false); // gave up — balance stays hidden
+    // All retries exhausted — show "—" pill so user knows key is connected
+    setBalanceLoading(false);
+    setBalanceFailed(true);
   }, [buildHeaders, apiKey]);
 
   // Fetch balance when API key is set
@@ -641,16 +660,25 @@ export function App() {
             </div>
           </div>
           <div className="header-right">
-            {balanceLoading && balance === null && (
+            {/* Loading state */}
+            {balanceLoading && (
               <div className="balance-pill balance-pill-loading" title="Loading balance...">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/></svg>
                 ···
               </div>
             )}
-            {balance !== null && (
+            {/* Loaded — show numeric balance */}
+            {!balanceLoading && balance !== null && (
               <div className="balance-pill" title="Click to refresh balance" onClick={fetchBalance} style={{ cursor: "pointer" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                 {balance.toLocaleString()}
+              </div>
+            )}
+            {/* Couldn't fetch — show dash so user knows key is connected */}
+            {!balanceLoading && balance === null && balanceFailed && apiKey.trim() && (
+              <div className="balance-pill balance-pill-unknown" title="Balance unavailable — click to retry" onClick={fetchBalance} style={{ cursor: "pointer" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                —
               </div>
             )}
             <button className="help-btn" onClick={() => setShowHelp(true)} title="Help">?</button>

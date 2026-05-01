@@ -771,6 +771,11 @@ body {
   animation: pulse 1.4s ease-in-out infinite;
 }
 
+.balance-pill-unknown {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.5; }
   50%       { opacity: 0.85; }
