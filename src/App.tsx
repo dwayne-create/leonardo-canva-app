@@ -241,6 +241,7 @@ export function App() {
     } catch { /* CORS or network — fall through to proxy */ }
 
     // Fallback: go through the proxy (handles CORS if direct call blocked)
+    // The proxy now returns all credit fields flat — same shape as user_details[0]
     const RETRIES = 3;
     const DELAY   = 8000;
     for (let i = 0; i < RETRIES; i++) {
@@ -249,12 +250,7 @@ export function App() {
         const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
         if (!res.ok) continue;
         const data = await res.json() as Record<string, unknown>;
-        const details: Record<string, unknown> = {
-          apiCredit:            data.apiCredit,
-          apiPaidTokens:        data._paidTokens,
-          apiSubscriptionTokens: data._subscriptionTokens,
-        };
-        const credit = extractCredit(details);
+        const credit = extractCredit(data);   // proxy now returns fields at top level
         if (credit !== null) {
           setBalance(credit);
           setBalanceLoading(false);

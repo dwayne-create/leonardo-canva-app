@@ -283,15 +283,10 @@ app.delete("/api/generation/:id", async (req, res) => {
 
 // ─── GET /api/balance ────────────────────────────────────────────────────────
 // Returns the authenticated user's API credit balance.
+// Returns ALL credit-related fields so the frontend can find the right one
+// regardless of which Leonardo plan type the user has.
 app.get("/api/balance", async (req, res) => {
-  const userSuppliedKey = req.headers["x-leo-api-key"];
-  const apiKey = userSuppliedKey || LEONARDO_API_KEY;
-
-  // If no user-supplied key, we're using the server env key which may not have
-  // credit info — return early with a clear indicator
-  if (!userSuppliedKey) {
-    return res.json({ apiCredit: null, tokenRenewalDate: null, noUserKey: true });
-  }
+  const apiKey = req.headers["x-leo-api-key"] || LEONARDO_API_KEY;
 
   try {
     const meRes = await fetch(`${LEONARDO_BASE}/me`, {
@@ -300,31 +295,21 @@ app.get("/api/balance", async (req, res) => {
     const meData = await meRes.json();
     const details = meData?.user_details?.[0];
 
-    // Log full details so we can see exactly what Leonardo returns
-    console.log("[balance] user_details[0] keys:", details ? Object.keys(details) : "null");
-    console.log("[balance] full details:", JSON.stringify(details, null, 2));
-
     if (!details) {
+      console.error("[balance] no user_details in response:", JSON.stringify(meData));
       return res.status(500).json({ message: "Could not resolve user details" });
     }
 
-    // Try every known field path for API credits
-    const apiCredit =
-      details.apiCredit           ??  // standard field
-      details.apiCreditBalance    ??  // alternate name
-      details.tokenBalance        ??  // some accounts use this
-      details.credits             ??  // fallback
-      details.user?.apiCredit     ??  // sometimes nested under user
-      null;
-
-    console.log(`[balance] resolved apiCredit=${apiCredit}, raw apiCredit field=${details.apiCredit}`);
-
+    // Return every field Leonardo might use for credits — frontend picks the first non-null
     return res.json({
-      apiCredit,
-      tokenRenewalDate:  details.user?.tokenRenewalDate ?? details.tokenRenewalDate ?? null,
-      // Include extra credit fields for debugging
-      _paidTokens:         details.apiPaidTokens         ?? null,
-      _subscriptionTokens: details.apiSubscriptionTokens ?? null,
+      apiCredit:            details.apiCredit            ?? null,
+      apiCreditBalance:     details.apiCreditBalance     ?? null,
+      apiPaidTokens:        details.apiPaidTokens        ?? null,
+      apiSubscriptionTokens: details.apiSubscriptionTokens ?? null,
+      tokenBalance:         details.tokenBalance         ?? null,
+      credits:              details.credits              ?? null,
+      userApiCredit:        details.user?.apiCredit      ?? null,
+      tokenRenewalDate:     details.user?.tokenRenewalDate ?? details.tokenRenewalDate ?? null,
     });
   } catch (err) {
     console.error("[balance] error:", err.message);
@@ -383,7 +368,7 @@ app.get("/api/models", async (_req, res) => {
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-6", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
