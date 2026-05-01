@@ -3,28 +3,38 @@ import { upload } from "@canva/asset";
 import { addElementAtCursor, addElementAtPoint } from "@canva/design";
 import "./styles.css";
 
+// Valid pixel dimensions for Nano Banana Pro (Leonardo enforces these exactly)
+const NANO_DIMS = [672, 720, 752, 832, 880, 944, 1024, 1104, 1184, 1248, 1392, 1456, 1568];
+
+// Snap a dimension to the nearest value in a list
+function snapToValid(val: number, validDims: number[]): number {
+  return validDims.reduce((best, d) =>
+    Math.abs(d - val) < Math.abs(best - val) ? d : best
+  );
+}
+
 // Each model maps to a real Leonardo model ID
 const MODELS = [
-  { id: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", name: "GPT Image 2",     maxRefs: 6 },
-  { id: "28aeddf8-bd19-4803-80fc-79602d1a9989", name: "Nano Banana Pro",  maxRefs: 6 },
-  { id: "05ce0082-2d80-4a2d-8653-4d1c85e2418e", name: "Seedream 4.5",     maxRefs: 4 },
-  { id: "b2614463-296c-462a-9586-aafdb8f00e36", name: "Flux.2 Pro",       maxRefs: 4 },
+  { id: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3", name: "GPT Image 2",    maxRefs: 6, maxImages: 1,  validDimensions: undefined },
+  { id: "28aeddf8-bd19-4803-80fc-79602d1a9989", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4,  validDimensions: NANO_DIMS },
+  { id: "05ce0082-2d80-4a2d-8653-4d1c85e2418e", name: "Seedream 4.5",    maxRefs: 4, maxImages: 4,  validDimensions: undefined },
+  { id: "b2614463-296c-462a-9586-aafdb8f00e36", name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4,  validDimensions: undefined },
 ];
 
 const STANDARD_SIZES = [
   { label: "1:1",  w: 1024, h: 1024 },
-  { label: "2:3",  w: 848,  h: 1264 },
-  { label: "3:2",  w: 1264, h: 848  },
-  { label: "16:9", w: 1376, h: 768  },
-  { label: "4:3",  w: 1200, h: 896  },
-  { label: "9:16", w: 768,  h: 1376 },
+  { label: "2:3",  w: 832,  h: 1248 },
+  { label: "3:2",  w: 1248, h: 832  },
+  { label: "16:9", w: 1392, h: 752  },
+  { label: "4:3",  w: 1248, h: 944  },
+  { label: "9:16", w: 752,  h: 1392 },
 ];
 
 const SOCIAL_SIZES = [
-  { label: "Instagram", w: 928,  h: 1152 },
-  { label: "TikTok",    w: 768,  h: 1376 },
-  { label: "Twitter",   w: 1200, h: 896  },
-  { label: "Facebook",  w: 1376, h: 768  },
+  { label: "Instagram", w: 944,  h: 1184 },
+  { label: "TikTok",    w: 752,  h: 1392 },
+  { label: "Twitter",   w: 1248, h: 880  },
+  { label: "Facebook",  w: 1392, h: 752  },
 ];
 
 const QUALITY_OPTIONS = ["low", "medium", "high"] as const;
@@ -130,11 +140,23 @@ export function App() {
     }, 1000);
   };
 
-  // When model changes, trim refs if the new model allows fewer
+  // When model changes, trim refs, snap dimensions, and cap count
   const handleModelChange = useCallback((newId: string) => {
     const newModel = MODELS.find((m) => m.id === newId)!;
     setModelId(newId);
     setRefWarning(null);
+    setError(null);
+
+    // Cap count to this model's max
+    setCount((prev) => Math.min(prev, newModel.maxImages));
+
+    // Snap dimensions if this model requires specific values
+    if (newModel.validDimensions) {
+      setWidth((prev) => snapToValid(prev, newModel.validDimensions!));
+      setHeight((prev) => snapToValid(prev, newModel.validDimensions!));
+    }
+
+    // Trim refs if the new model allows fewer
     setRefImages((prev) => {
       if (prev.length > newModel.maxRefs) {
         setRefWarning(
@@ -463,10 +485,9 @@ export function App() {
         <div className="section">
           <label className="label">COUNT</label>
           <select className="count-select" value={count} onChange={(e) => setCount(+e.target.value)} disabled={isGenerating}>
-            <option value={1}>1 image</option>
-            <option value={2}>2 images</option>
-            <option value={3}>3 images</option>
-            <option value={4}>4 images</option>
+            {[1, 2, 3, 4].filter((n) => n <= currentModel.maxImages).map((n) => (
+              <option key={n} value={n}>{n} {n === 1 ? "image" : "images"}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -490,17 +511,32 @@ export function App() {
         </div>
       </div>
 
-      {/* Width / Height sliders */}
-      <div className="section">
-        <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
-        <input type="range" min={512} max={1536} step={64} value={width} onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
-      </div>
-
-      <div className="section">
-        <div className="slider-row"><label className="label">HEIGHT</label><span className="slider-val">{height}</span></div>
-        <input type="range" min={512} max={1536} step={64} value={height} onChange={(e) => { setHeight(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
-        <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
-      </div>
+      {/* Width / Height — sliders for free-form models, dropdowns for fixed-dim models */}
+      {currentModel.validDimensions ? (
+        <div className="section">
+          <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
+          <select className="select" value={width} onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating}>
+            {currentModel.validDimensions.map((d) => <option key={d} value={d}>{d}px</option>)}
+          </select>
+          <div className="slider-row" style={{ marginTop: 8 }}><label className="label">HEIGHT</label><span className="slider-val">{height}</span></div>
+          <select className="select" value={height} onChange={(e) => { setHeight(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating}>
+            {currentModel.validDimensions.map((d) => <option key={d} value={d}>{d}px</option>)}
+          </select>
+          <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
+        </div>
+      ) : (
+        <>
+          <div className="section">
+            <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
+            <input type="range" min={512} max={1536} step={64} value={width} onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
+          </div>
+          <div className="section">
+            <div className="slider-row"><label className="label">HEIGHT</label><span className="slider-val">{height}</span></div>
+            <input type="range" min={512} max={1536} step={64} value={height} onChange={(e) => { setHeight(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating} className="slider" />
+            <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP</div>
+          </div>
+        </>
+      )}
 
       {/* Reference images */}
       <div className="section">
