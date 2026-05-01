@@ -181,6 +181,23 @@ body {
   font-style: italic;
 }
 
+/* Prism footer logo — generate tab only */
+.prism-footer-logo {
+  width: 100%;
+  margin-top: 28px;
+  padding-bottom: 8px;
+}
+
+.prism-footer-logo svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.prism-footer-logo path {
+  fill: #BBBBBB;
+}
+
 /* Count select */
 .count-select {
   width: 100%;
