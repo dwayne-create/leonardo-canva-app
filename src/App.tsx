@@ -511,9 +511,7 @@ export function App() {
       {/* Quality + Count */}
       <div className="row-3col">
         <div className="section">
-          <label className={`label ${!currentModel.hasQuality ? "label-muted" : ""}`}>
-            QUALITY {!currentModel.hasQuality && <span className="label-na">— not available for this model</span>}
-          </label>
+          <label className="label">QUALITY</label>
           <div className={`quality-picker ${!currentModel.hasQuality ? "picker-disabled" : ""}`}>
             {QUALITY_OPTIONS.map((q) => (
               <button
@@ -524,6 +522,11 @@ export function App() {
               >{q}</button>
             ))}
           </div>
+          {!currentModel.hasQuality && (
+            <div className="feature-tooltip">
+              Not available with {currentModel.name}
+            </div>
+          )}
         </div>
         <div className="section">
           <label className="label">COUNT</label>
