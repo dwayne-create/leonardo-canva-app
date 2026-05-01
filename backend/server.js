@@ -69,11 +69,8 @@ async function uploadInitImage(base64DataUrl, apiKey) {
 const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "gemini-2.5-flash-image", "nano-banana-2", "seedream-4.0", "seedream-4.5", "flux-2-pro", "ideogram-v3.0"]);
 
 // Models where quality param (LOW/MEDIUM/HIGH) is supported
-// NOTE: gpt-image-2 rejects both `quality` and `prompt_enhance` — API behaviour overrides handover doc
-const MODELS_WITH_QUALITY = new Set(["gpt-image-1.5", "ideogram-v3.0"]);
-
-// Models that do NOT support prompt_enhance (API rejects it)
-const MODELS_WITHOUT_PROMPT_ENHANCE = new Set(["gpt-image-2"]);
+const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v3.0"]);
+// prompt_enhance is excluded for ALL models — user confirmed OK with this
 
 app.post("/api/generate", async (req, res) => {
   const { modelId, prompt, width, height, num_images = 1, quality, refImages } = req.body;
@@ -116,13 +113,17 @@ app.post("/api/generate", async (req, res) => {
       width:    width  || 1024,
       height:   height || 1024,
       quantity: Math.min(num_images, 4),
-      ...(!MODELS_WITHOUT_PROMPT_ENHANCE.has(modelId) ? { prompt_enhance: "OFF" } : {}),
+      // prompt_enhance omitted for all models — confirmed OK by user
       ...(image_reference_ids.length > 0 ? { image_reference_ids } : {}),
       ...(refStrength  ? { image_reference_strength: refStrength } : {}),
       ...(qualityParam ? { quality: qualityParam }                  : {}),
     };
 
-    console.log(`  Sending to Leonardo:`, JSON.stringify({ ...body, image_reference_ids: body.image_reference_ids?.length ?? 0 }));
+    // ── DEBUG: log the exact body (mask image ids for brevity) ──
+    console.log(`  [DEBUG] Full body to Leonardo:`, JSON.stringify({
+      ...body,
+      image_reference_ids: body.image_reference_ids ? `[${body.image_reference_ids.length} ids]` : undefined,
+    }));
 
     const response = await fetch(`${LEONARDO_BASE}/generations`, {
       method: "POST",
@@ -136,10 +137,19 @@ app.post("/api/generate", async (req, res) => {
     const data = await response.json();
 
     // V2 can return 200 with an errors array — check both
-    if (!response.ok || (Array.isArray(data) && data.some(d => d.error))) {
-      const errMsg = data?.error || data?.[0]?.error || "Leonardo API error";
-      console.error("Leonardo error:", data);
-      return res.status(response.ok ? 400 : response.status).json({ message: errMsg });
+    // Also check data.errors[] as per V2 spec
+    const hasError = !response.ok
+      || (Array.isArray(data) && data.some(d => d.error))
+      || (data?.errors && data.errors.length > 0);
+
+    if (hasError) {
+      const errMsg = data?.error
+        || data?.[0]?.error
+        || data?.errors?.[0]?.message
+        || data?.errors?.[0]?.error
+        || "Leonardo API error";
+      console.error(`  [DEBUG] Leonardo error response (HTTP ${response.status}):`, JSON.stringify(data));
+      return res.status(response.ok ? 400 : response.status).json({ message: errMsg, debug: data });
     }
 
     const generationId = data?.sdGenerationJob?.generationId;
