@@ -332,6 +332,42 @@ app.get("/api/balance", async (req, res) => {
   }
 });
 
+// ─── GET /api/test-key ───────────────────────────────────────────────────────
+// Returns the FULL raw /me response for the user's API key.
+// Used by the Settings tab "Test Connection" button for diagnostics.
+app.get("/api/test-key", async (req, res) => {
+  const apiKey = req.headers["x-leo-api-key"];
+  if (!apiKey) {
+    return res.status(400).json({ error: "No API key provided. Set x-leo-api-key header." });
+  }
+  try {
+    const meRes = await fetch(`${LEONARDO_BASE}/me`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const meData = await meRes.json();
+    const details = meData?.user_details?.[0];
+    console.log("[test-key] raw user_details[0]:", JSON.stringify(details, null, 2));
+    return res.json({
+      httpStatus: meRes.status,
+      userId:     details?.user?.id ?? null,
+      username:   details?.user?.username ?? null,
+      // All credit-related fields returned as-is
+      creditFields: {
+        apiCredit:            details?.apiCredit            ?? null,
+        apiCreditBalance:     details?.apiCreditBalance     ?? null,
+        apiPaidTokens:        details?.apiPaidTokens        ?? null,
+        apiSubscriptionTokens: details?.apiSubscriptionTokens ?? null,
+        tokenBalance:         details?.tokenBalance         ?? null,
+        credits:              details?.credits              ?? null,
+      },
+      // Dump everything so nothing is hidden
+      rawDetails: details ?? null,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/models ─────────────────────────────────────────────────────────
 // Returns available Leonardo platform models (optional, for dynamic model list).
 app.get("/api/models", async (_req, res) => {

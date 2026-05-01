@@ -178,6 +178,10 @@ export function App() {
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
+  // Key diagnostic state
+  const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
+  const [keyTestLoading, setKeyTestLoading] = useState(false);
+
   // ── Build headers with optional user API key ──────────────────────────────
   // IMPORTANT: must be defined BEFORE fetchBalance so the closure is correct.
   const buildHeaders = useCallback((extra: Record<string, string> = {}) => {
@@ -313,10 +317,52 @@ export function App() {
     setApiKey(trimmed);
     localStorage.setItem(API_KEY_STORAGE, trimmed);
     setApiKeySaved(true);
+    setKeyTestResult(null);
     setTimeout(() => {
       setApiKeySaved(false);
       setTab("generate");
     }, 1000);
+  };
+
+  // Test the API key and show raw Leonardo response — for diagnosing balance issues
+  const handleTestKey = async () => {
+    const key = apiKeyInput.trim() || apiKey.trim();
+    if (!key) return;
+    setKeyTestLoading(true);
+    setKeyTestResult(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/test-key`, {
+        headers: { "x-leo-api-key": key },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setKeyTestResult(`❌ Server error: ${data.error || res.status}`);
+        return;
+      }
+      const cf = data.creditFields || {};
+      const lines = [
+        `✓ Connected as: ${data.username || data.userId || "(unknown)"}`,
+        `─────────────────────────`,
+        `apiCredit:             ${cf.apiCredit            ?? "null"}`,
+        `apiCreditBalance:      ${cf.apiCreditBalance     ?? "null"}`,
+        `apiPaidTokens:         ${cf.apiPaidTokens        ?? "null"}`,
+        `apiSubscriptionTokens: ${cf.apiSubscriptionTokens ?? "null"}`,
+        `tokenBalance:          ${cf.tokenBalance         ?? "null"}`,
+        `credits:               ${cf.credits              ?? "null"}`,
+      ];
+      setKeyTestResult(lines.join("\n"));
+
+      // If we found any credit value, update the balance display too
+      const found = Object.values(cf).find((v) => v != null);
+      if (found != null) {
+        const n = Number(found);
+        if (!isNaN(n)) { setBalance(n); setBalanceFailed(false); }
+      }
+    } catch (err: any) {
+      setKeyTestResult(`❌ Network error: ${err.message}`);
+    } finally {
+      setKeyTestLoading(false);
+    }
   };
 
   // When model changes, trim refs, snap dimensions, and cap count
@@ -722,6 +768,20 @@ export function App() {
               {apiKeySaved ? "✓ Saved! Taking you to Generate..." : apiKey ? "Update Key" : "Save & Start Generating →"}
             </button>
             {apiKey && <div className="key-status">✓ Key connected — you're all set.</div>}
+
+            {/* Test Connection — shows raw credit fields from Leonardo */}
+            {(apiKey || apiKeyInput.trim()) && (
+              <button
+                className="test-key-btn"
+                onClick={handleTestKey}
+                disabled={keyTestLoading}
+              >
+                {keyTestLoading ? "Testing..." : "🔍 Test Connection & Check Balance"}
+              </button>
+            )}
+            {keyTestResult && (
+              <pre className="key-test-result">{keyTestResult}</pre>
+            )}
           </div>
 
           <div className="how-to">

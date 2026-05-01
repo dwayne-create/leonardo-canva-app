@@ -1178,6 +1178,42 @@ body {
   margin-top: 4px;
 }
 
+.test-key-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: transparent;
+  border: 1px dashed rgba(110, 96, 238, 0.4);
+  border-radius: 8px;
+  color: #6E60EE;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+.test-key-btn:hover {
+  background: rgba(110, 96, 238, 0.06);
+}
+.test-key-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.key-test-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #1e1e2e;
+  border-radius: 8px;
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #c0dfff;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 /* How-to guide */
 .how-to {
   background: #f9fafb;
