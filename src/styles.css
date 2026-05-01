@@ -678,11 +678,77 @@ body {
   line-height: 1.6;
 }
 
-/* Header top row (logo + balance) */
+/* Header top row (logo + balance + help) */
 .header-top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.help-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.help-btn:hover {
+  border-color: #6E60EE;
+  color: #6E60EE;
+  background: rgba(110, 96, 238, 0.06);
+}
+
+/* Help modal */
+.help-modal {
+  max-width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 18px 18px 14px;
+}
+
+.help-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.help-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.help-h {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.help-section p {
+  font-size: 11px;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .balance-pill {
@@ -698,6 +764,16 @@ body {
   font-weight: 700;
   letter-spacing: 0.2px;
   white-space: nowrap;
+}
+
+.balance-pill-loading {
+  opacity: 0.5;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.85; }
 }
 
 /* Generate button */

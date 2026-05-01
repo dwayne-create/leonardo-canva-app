@@ -171,7 +171,11 @@ export function App() {
   const [apiKeySaved, setApiKeySaved] = useState(false);
 
   // Balance state
-  const [balance, setBalance] = useState<number | null>(null);
+  const [balance, setBalance]             = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  // Help modal state
+  const [showHelp, setShowHelp] = useState(false);
 
   // ── Build headers with optional user API key ──────────────────────────────
   // IMPORTANT: must be defined BEFORE fetchBalance so the closure is correct.
@@ -181,19 +185,32 @@ export function App() {
     return h;
   }, [apiKey]);
 
+  // Fetch balance with retry — Render free tier can take ~50s to cold-start.
+  // Retries up to 4 times with 8s gaps so the pill appears even after a cold start.
   const fetchBalance = useCallback(async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
-      if (!res.ok) return;
-      const data = await res.json();
-      // Accept number or numeric string — Leonardo may return either
-      const raw = data.apiCredit;
-      if (raw != null) {
-        const parsed = Number(raw);
-        if (!isNaN(parsed)) setBalance(parsed);
-      }
-    } catch { /* silent — balance is non-critical */ }
-  }, [buildHeaders]);
+    if (!apiKey.trim()) return;
+    setBalanceLoading(true);
+    const RETRIES = 4;
+    const DELAY   = 8000;
+    for (let i = 0; i < RETRIES; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, DELAY));
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/balance`, { headers: buildHeaders() });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const raw = data.apiCredit;
+        if (raw != null) {
+          const parsed = Number(raw);
+          if (!isNaN(parsed)) {
+            setBalance(parsed);
+            setBalanceLoading(false);
+            return;
+          }
+        }
+      } catch { /* try next attempt */ }
+    }
+    setBalanceLoading(false); // gave up — balance stays hidden
+  }, [buildHeaders, apiKey]);
 
   // Fetch balance when API key is set
   useEffect(() => {
@@ -572,6 +589,45 @@ export function App() {
         </div>
       )}
 
+      {/* Help modal */}
+      {showHelp && (
+        <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="modal help-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">How to use Prism</div>
+            <div className="help-content">
+              <div className="help-section">
+                <div className="help-h">🔑 Connect your account</div>
+                <p>Tap ⚙︎ Settings, paste your Leonardo API key and hit Save. Your key is stored only on this device.</p>
+              </div>
+              <div className="help-section">
+                <div className="help-h">🎨 Generate tab</div>
+                <p><strong>Model</strong> — choose GPT Image 2, Nano Banana Pro, Seedream 4.5, or Flux.2 Pro. Each has different strengths and credit costs.</p>
+                <p><strong>Quality</strong> — GPT Image 2 only. Low uses fewer credits; High produces sharper results.</p>
+                <p><strong>Size</strong> — pick a standard ratio or social preset, or drag the sliders for a custom size.</p>
+                <p><strong>Reference images</strong> — optionally add up to 6 images to guide the style or composition. Use "+ From computer" to upload, or "+ From library" to pick from your previous generations.</p>
+                <p><strong>Prompt</strong> — describe the image. Be specific for best results.</p>
+                <p><strong>Generate button</strong> — shows the estimated credit cost before you click. The first result is added to your slide automatically.</p>
+              </div>
+              <div className="help-section">
+                <div className="help-h">🖼 Library tab</div>
+                <p>Browse all your past generations. Click "+ Add to slide" to insert any image, or the 🗑 icon to delete it from your Leonardo account.</p>
+              </div>
+              <div className="help-section">
+                <div className="help-h">🪙 Credits</div>
+                <p>Your balance shows in the top-right corner. It refreshes automatically after each generation. Credits renew monthly on your Leonardo plan.</p>
+              </div>
+              <div className="help-section">
+                <div className="help-h">💡 Tips</div>
+                <p>Add a reference image to match an existing slide's visual style. Use 9:16 for full-bleed portrait slides, 16:9 for landscape backgrounds.</p>
+              </div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: 16 }}>
+              <button className="modal-cancel" style={{ flex: "none", width: "100%" }} onClick={() => setShowHelp(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="header">
         <div className="header-top-row">
@@ -581,15 +637,24 @@ export function App() {
             </svg>
             <div className="logo-text-group">
               <span className="logo-text">Prism</span>
-              <span className="logo-badge">by Leonardo.AI</span>
+              <a href="https://www.leonardo.ai" target="_blank" rel="noopener noreferrer" className="logo-badge">by Leonardo.AI</a>
             </div>
           </div>
-          {balance !== null && (
-            <div className="balance-pill" title="Your Leonardo API credit balance">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              {balance.toLocaleString()}
-            </div>
-          )}
+          <div className="header-right">
+            {balanceLoading && balance === null && (
+              <div className="balance-pill balance-pill-loading" title="Loading balance...">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/></svg>
+                ···
+              </div>
+            )}
+            {balance !== null && (
+              <div className="balance-pill" title="Click to refresh balance" onClick={fetchBalance} style={{ cursor: "pointer" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                {balance.toLocaleString()}
+              </div>
+            )}
+            <button className="help-btn" onClick={() => setShowHelp(true)} title="Help">?</button>
+          </div>
         </div>
         <p className="header-sub">Top image models at your command, right inside Canva.</p>
       </div>
