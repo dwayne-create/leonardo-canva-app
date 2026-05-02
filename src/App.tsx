@@ -179,6 +179,9 @@ export function App() {
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
+  // Magic Layers concept modal
+  const [showMagicLayers, setShowMagicLayers] = useState(false);
+
   // Spark Prompt state
   const [sparkLoading, setSparkLoading]     = useState(false);
   const [sparkError,   setSparkError]       = useState<string | null>(null);
@@ -747,6 +750,40 @@ export function App() {
         </div>
       )}
 
+      {/* Magic Layers concept modal */}
+      {showMagicLayers && (
+        <div className="modal-overlay" onClick={() => setShowMagicLayers(false)}>
+          <div className="modal magic-layers-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ml-modal-header">
+              <div className="ml-modal-icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="4" y="14" width="24" height="14" rx="3" fill="rgba(110,96,238,0.15)" stroke="#6E60EE" strokeWidth="1.5"/>
+                  <rect x="7" y="9" width="18" height="14" rx="3" fill="rgba(110,96,238,0.25)" stroke="#6E60EE" strokeWidth="1.5"/>
+                  <rect x="10" y="4" width="12" height="14" rx="3" fill="rgba(110,96,238,0.45)" stroke="#6E60EE" strokeWidth="1.5"/>
+                  <circle cx="24" cy="8" r="4" fill="#6E60EE"/>
+                  <path d="M22.5 8l1 1 2-2" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <div className="ml-modal-title">Magic Layers</div>
+                <div className="ml-modal-badge">Concept · Coming Soon</div>
+              </div>
+            </div>
+            <p className="ml-modal-body">
+              Magic Layers will combine your Prism-generated image with Canva's AI to automatically build a layered, production-ready slide — background, text placement, and design elements — in one click.
+            </p>
+            <div className="ml-modal-steps">
+              <div className="ml-step"><span className="ml-step-num">1</span>Generate your image with Prism</div>
+              <div className="ml-step"><span className="ml-step-num">2</span>Hit Magic Layers</div>
+              <div className="ml-step"><span className="ml-step-num">3</span>Canva auto-builds a polished slide around it</div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: 16 }}>
+              <button className="modal-cancel" style={{ flex: "none", width: "100%" }} onClick={() => setShowMagicLayers(false)}>Got it</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="header">
         <div className="header-top-row">
@@ -1075,6 +1112,32 @@ export function App() {
             </span>
           </>
         )}
+      </button>
+
+      {/* Magic Layers concept button */}
+      <button className="magic-layers-btn" onClick={() => setShowMagicLayers(true)}>
+        <span className="ml-btn-text">Create Magic Layers</span>
+        <div className="ml-btn-icon">
+          <svg width="36" height="36" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Bottom layer — sky image */}
+            <rect x="8" y="22" width="36" height="26" rx="4" fill="#7EC8E3"/>
+            <rect x="8" y="22" width="36" height="26" rx="4" fill="url(#sky)"/>
+            {/* Butterfly on top layer */}
+            <rect x="16" y="12" width="28" height="24" rx="4" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/>
+            {/* Purple platform */}
+            <path d="M4 42 L26 52 L52 42 L30 32 Z" fill="#7C3AED" opacity="0.9"/>
+            {/* Corner dots */}
+            <circle cx="16" cy="14" r="2.5" fill="white"/>
+            <circle cx="44" cy="14" r="2.5" fill="white"/>
+            <circle cx="16" cy="34" r="2.5" fill="white"/>
+            <circle cx="44" cy="34" r="2.5" fill="white"/>
+            {/* Connecting lines */}
+            <line x1="16" y1="14" x2="44" y2="14" stroke="white" strokeWidth="1" opacity="0.6"/>
+            <line x1="16" y1="14" x2="16" y2="34" stroke="white" strokeWidth="1" opacity="0.6"/>
+            <line x1="44" y1="14" x2="44" y2="34" stroke="white" strokeWidth="1" opacity="0.6"/>
+            <line x1="16" y1="34" x2="44" y2="34" stroke="white" strokeWidth="1" opacity="0.6"/>
+          </svg>
+        </div>
       </button>
 
       {previewUrls.length > 0 && (
