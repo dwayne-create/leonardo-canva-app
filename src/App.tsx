@@ -775,7 +775,7 @@ export function App() {
             <div className="ml-modal-steps">
               <div className="ml-step"><span className="ml-step-num">1</span>Generate your image with Prism</div>
               <div className="ml-step"><span className="ml-step-num">2</span>Hit Magic Layers</div>
-              <div className="ml-step"><span className="ml-step-num">3</span>Canva auto-builds a polished slide around it</div>
+              <div className="ml-step"><span className="ml-step-num">3</span>Canva splits your image into editable layers</div>
             </div>
             <div className="modal-actions" style={{ marginTop: 16 }}>
               <button className="modal-cancel" style={{ flex: "none", width: "100%" }} onClick={() => setShowMagicLayers(false)}>Got it</button>

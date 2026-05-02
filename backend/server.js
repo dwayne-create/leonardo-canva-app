@@ -504,7 +504,11 @@ async function geminiGenerate(systemText, userText) {
   const body = {
     system_instruction: { parts: [{ text: systemText }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
-    generationConfig: { maxOutputTokens: 300, temperature: 0.9 },
+    generationConfig: {
+      maxOutputTokens: 512,
+      temperature: 0.9,
+      thinkingConfig: { thinkingBudget: 0 },  // disable reasoning tokens — we want the full response as the prompt
+    },
   };
   const res = await fetch(GEMINI_URL, {
     method: "POST",
@@ -553,7 +557,7 @@ Rules:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-13", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-14", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
