@@ -1144,7 +1144,10 @@ export function App() {
         {sparkError && (
           <div className="spark-error">{sparkError}</div>
         )}
-        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} />
+        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} maxLength={1500} />
+        <div className={`char-counter ${prompt.length > 1400 ? "char-counter-warn" : ""} ${prompt.length >= 1500 ? "char-counter-over" : ""}`}>
+          {prompt.length} / 1500
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}

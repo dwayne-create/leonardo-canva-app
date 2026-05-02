@@ -780,6 +780,21 @@ body {
   color: #9ca3af;
 }
 
+.char-counter {
+  text-align: right;
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+  transition: color 0.2s;
+}
+.char-counter-warn {
+  color: #f59e0b;
+}
+.char-counter-over {
+  color: #ef4444;
+  font-weight: 600;
+}
+
 /* Status / error */
 .status-banner {
   background: #f0effe;
