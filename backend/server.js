@@ -569,7 +569,9 @@ app.post("/api/magic-prompt", async (req, res) => {
   const hasSlideImage = typeof slideImage === "string" && slideImage.length > 0;
   console.log(`  Spark Prompt: style=${promptStyle}, slideImage=${hasSlideImage}, slideText="${slideText.slice(0, 60)}..."`);
 
-  const isInfographic = promptStyle === "Infographic";
+  const isInfographic   = promptStyle === "Infographic";
+  const isMagazineCover = promptStyle === "Magazine Cover";
+  const isPrintAd       = promptStyle === "Print Ad";
 
   // ── PER-STYLE HINTS ───────────────────────────────────────────────────────
   // One-liner per style — tells Gemini what makes this medium visually distinctive.
@@ -603,6 +605,46 @@ Output ONLY the brief — no preamble, no explanation. Under 1400 characters.`;
     ? `${hasSlideImage ? "Slide image is attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nWrite the full infographic brief. Include every data point. Output only the brief.`
     : `${hasSlideImage ? "Slide image is attached above.\n\n" : ""}No slide text. Write a clean editorial infographic brief for a professional data presentation.`;
 
+  // ── MAGAZINE COVER SYSTEM ────────────────────────────────────────────────
+  const magazineSystem = `You are an award-winning art director at a major design magazine (Wired, Fast Company, Time, Bloomberg Businessweek).
+
+Read the slide content. Your job is to design a REAL magazine cover where the slide's actual words become the editorial content of the magazine — not just the visual mood.
+
+You will output a Leonardo.AI image generation prompt that describes the full cover including rendered text, layout, and hero image.
+
+Use the slide content as follows:
+- MASTHEAD: invent a short magazine name that fits the slide's theme (2–4 words, e.g. "SIGNAL", "FUTURE", "WIRED", "CANVAS")
+- HEADLINE: take the slide's most powerful claim or title — make it the big bold cover headline. Use the actual words.
+- COVER LINES: 3–4 short story teasers pulled directly from the slide's sub-topics, data points, or key names. These appear as smaller text on the cover.
+- TAGLINE: a short summary of the slide's thesis (6–10 words), placed near the bottom
+- HERO VISUAL: a dramatic photographic or illustrated scene that visually represents the headline
+
+Output format: one comma-separated Leonardo prompt. Include literal text strings in double quotes so Leonardo knows to render them. Describe placement (top, centre, bottom-left, etc.), typography weight (bold, condensed, italic), colour of each text element, and the hero image behind or beside the text. Under 1400 characters. Output the prompt ONLY — no preamble.`;
+
+  const magazineUser = slideText.trim()
+    ? `${hasSlideImage ? "Slide image attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nDesign the full magazine cover. Use the slide's actual words as real cover copy. Output the Leonardo prompt only.`
+    : `${hasSlideImage ? "Slide image attached above.\n\n" : ""}No slide text. Design a premium editorial magazine cover for a professional design or technology publication. Output the Leonardo prompt only.`;
+
+  // ── PRINT AD SYSTEM ───────────────────────────────────────────────────────
+  const printAdSystem = `You are a senior creative director at a top advertising agency (Ogilvy, Droga5, Wieden+Kennedy).
+
+Read the slide content. Your job is to design a full-page print advertisement where the slide's actual message, product name, and key claims become the real ad copy in the image.
+
+You will output a Leonardo.AI image generation prompt that describes the complete ad including rendered text, layout, and hero visual.
+
+Use the slide content as follows:
+- HEADLINE: the slide's main message rewritten as a powerful ad headline. Bold, short, punchy. Use the actual brand or product name if present.
+- BODY LINE: one supporting sentence drawn from the slide's key benefit or data point
+- BRAND NAME / LOGO AREA: the product or brand name from the slide, placed prominently (bottom-right or centre)
+- CTA: a short call-to-action if appropriate ("Join the future." / "Available now." etc.)
+- HERO VISUAL: a single arresting image that makes the headline land harder
+
+Output format: one comma-separated Leonardo prompt. Include literal text strings in double quotes. Describe placement, typography weight, colour, and the hero visual. Under 1400 characters. Output the prompt ONLY — no preamble.`;
+
+  const printAdUser = slideText.trim()
+    ? `${hasSlideImage ? "Slide image attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nDesign the full-page print ad. Use the slide's actual words as real ad copy. Output the Leonardo prompt only.`
+    : `${hasSlideImage ? "Slide image attached above.\n\n" : ""}No slide text. Design a premium full-page print advertisement for a professional technology or design brand. Output the Leonardo prompt only.`;
+
   // ── STANDARD SYSTEM (all other styles) ───────────────────────────────────
   const standardSystem = `You are a world-class creative director and Leonardo.AI prompt engineer.
 
@@ -621,8 +663,14 @@ Output ONLY the prompt — comma-separated descriptors, 400–900 characters, sp
     ? `${hasSlideImage ? "Slide image attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nWrite the Leonardo.AI image prompt. Style: ${promptStyle}. Output the prompt only.`
     : `${hasSlideImage ? "Slide image attached above.\n\n" : ""}No slide text. Write a powerful Leonardo.AI image prompt for a professional presentation background. Style: ${promptStyle}. Output the prompt only.`;
 
-  const system = isInfographic ? infographicSystem : standardSystem;
-  const user   = isInfographic ? infographicUser   : standardUser;
+  const system = isInfographic   ? infographicSystem
+               : isMagazineCover ? magazineSystem
+               : isPrintAd       ? printAdSystem
+               :                   standardSystem;
+  const user   = isInfographic   ? infographicUser
+               : isMagazineCover ? magazineUser
+               : isPrintAd       ? printAdUser
+               :                   standardUser;
 
   const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
 
@@ -673,7 +721,7 @@ app.get("/api/proxy-image", async (req, res) => {
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-40", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-41", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
