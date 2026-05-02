@@ -836,6 +836,7 @@ export function App() {
 
             <div className="style-modal-grid">
               {[
+                { label: "Canvafy Me",            icon: "💎" },
                 { label: "Photography",           icon: "📷" },
                 { label: "Illustration",          icon: "🎨" },
                 { label: "Magazine Cover",        icon: "📰" },

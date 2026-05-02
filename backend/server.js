@@ -572,6 +572,7 @@ app.post("/api/magic-prompt", async (req, res) => {
   const isInfographic   = promptStyle === "Infographic";
   const isMagazineCover = promptStyle === "Magazine Cover";
   const isPrintAd       = promptStyle === "Print Ad";
+  const isCanvafyMe     = promptStyle === "Canvafy Me";
 
   // ── PER-STYLE HINTS ───────────────────────────────────────────────────────
   // One-liner per style — tells Gemini what makes this medium visually distinctive.
@@ -645,6 +646,25 @@ Output format: one comma-separated Leonardo prompt. Include literal text strings
     ? `${hasSlideImage ? "Slide image attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nDesign the full-page print ad. Use the slide's actual words as real ad copy. Output the Leonardo prompt only.`
     : `${hasSlideImage ? "Slide image attached above.\n\n" : ""}No slide text. Design a premium full-page print advertisement for a professional technology or design brand. Output the Leonardo prompt only.`;
 
+  // ── CANVAFY ME SYSTEM ────────────────────────────────────────────────────
+  const canvafySystem = `You are the world's best art director — the kind who wins D&AD Pencils, Cannes Lions, and One Show Golds. You work at the intersection of Pentagram, Apple's marketing team, and Bloomberg Businessweek's design desk.
+
+Read the slide content carefully. Your job is to produce the single most visually stunning, polished, and professionally executed Leonardo.AI image prompt possible for this content.
+
+Work through three things before writing a single word of output:
+
+1. CHOOSE YOUR MEDIUM — based on what the slide is actually saying, pick the visual approach that would make it most powerful. Could be cinematic photography, editorial illustration, 3D/CGI, bold graphic design, or a deliberate mix. Choose based on what serves the content, not what looks generically impressive.
+
+2. PULL FROM THE CONTENT — use the slide's actual words, concepts, tensions, data points, or names as raw material. The content should inspire the scene, metaphor, colour palette, and composition. Not a literal illustration — an elevated, felt interpretation. If the slide has a strong phrase or claim, it can appear as actual rendered text in the image.
+
+3. DIRECT IT — describe the image as if briefing the world's best photographer, illustrator, or CGI studio. Specify: the precise scene or composition, exact colour palette (real colour names), quality of light, texture, finish, and why every element is there. Nothing accidental.${hasSlideImage ? "\n\nA screenshot of the slide is attached. Use the actual colours, layout, and visual identity you see to inform the palette and mood." : ""}
+
+Output ONLY the Leonardo.AI image prompt — comma-separated descriptors, 400–900 characters, precise and specific, no explanation, no labels. This should be the prompt that produces an image a top creative director would put in their portfolio.`;
+
+  const canvafyUser = slideText.trim()
+    ? `${hasSlideImage ? "Slide image attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nChoose the best medium, pull from the content, direct it at the highest level. Output the Leonardo prompt only.`
+    : `${hasSlideImage ? "Slide image attached above.\n\n" : ""}No slide text. Create a world-class, visually arresting Leonardo.AI prompt for a premium professional presentation. Choose the best medium and direct it at the highest possible level. Output the prompt only.`;
+
   // ── STANDARD SYSTEM (all other styles) ───────────────────────────────────
   const standardSystem = `You are a world-class creative director and Leonardo.AI prompt engineer.
 
@@ -666,10 +686,12 @@ Output ONLY the prompt — comma-separated descriptors, 400–900 characters, sp
   const system = isInfographic   ? infographicSystem
                : isMagazineCover ? magazineSystem
                : isPrintAd       ? printAdSystem
+               : isCanvafyMe     ? canvafySystem
                :                   standardSystem;
   const user   = isInfographic   ? infographicUser
                : isMagazineCover ? magazineUser
                : isPrintAd       ? printAdUser
+               : isCanvafyMe     ? canvafyUser
                :                   standardUser;
 
   const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
@@ -721,7 +743,7 @@ app.get("/api/proxy-image", async (req, res) => {
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-41", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-42", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
