@@ -110,11 +110,14 @@ const API_KEY_STORAGE = "prism_leo_api_key";
 const LIB_PICKER_PAGE_SIZE = 18; // 6×3 grid per page
 
 async function insertIntoCanva(url: string, width: number, height: number) {
+  // Route Leonardo CDN URLs through our proxy so Canva can fetch them without
+  // hitting CORS restrictions or S3 signed-URL expiry on the client side.
+  const proxyUrl = `${BACKEND_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
   const asset = await upload({
     type: "image",
     mimeType: "image/jpeg",
-    url,
-    thumbnailUrl: url,
+    url: proxyUrl,
+    thumbnailUrl: proxyUrl,
     width,
     height,
     aiDisclosure: "app_generated",

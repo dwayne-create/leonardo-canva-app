@@ -646,8 +646,34 @@ Output ONLY the prompt — comma-separated descriptors, 400–900 characters, sp
   }
 });
 
+// ─── GET /api/proxy-image ─────────────────────────────────────────────────────
+// Fetches a Leonardo CDN image server-side and streams it back so Canva can
+// upload it without hitting CORS restrictions or URL expiry on the client.
+// Usage: GET /api/proxy-image?url=<encodeURIComponent(leonardoUrl)>
+app.get("/api/proxy-image", async (req, res) => {
+  const { url } = req.query;
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ message: "Missing url query param" });
+  }
+  try {
+    const imgRes = await fetch(url);
+    if (!imgRes.ok) {
+      return res.status(imgRes.status).json({ message: `Upstream fetch failed: ${imgRes.status}` });
+    }
+    const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+    const arrayBuf = await imgRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuf);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-38", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-39", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
