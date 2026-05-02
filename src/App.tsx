@@ -104,11 +104,6 @@ interface LibraryImage {
   createdAt: string;
 }
 
-interface Collection {
-  id: string;
-  name: string;
-  createdAt?: string;
-}
 
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 const API_KEY_STORAGE = "prism_leo_api_key";
@@ -259,14 +254,6 @@ export function App() {
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [deletingId, setDeletingId]             = useState<string | null>(null);
 
-  // Collection state
-  const [collections, setCollections]                       = useState<Collection[]>([]);
-  const [collectionsLoading, setCollectionsLoading]         = useState(false);
-  const [collectionPickerGenId, setCollectionPickerGenId]   = useState<string | null>(null); // generationId whose picker is open
-  const [newCollectionName, setNewCollectionName]           = useState("");
-  const [collectionActionLoading, setCollectionActionLoading] = useState(false);
-  const [collectionActionError, setCollectionActionError]   = useState<string | null>(null);
-  const [collectionSuccessGenId, setCollectionSuccessGenId] = useState<string | null>(null); // shows ✓ briefly
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
 
@@ -440,33 +427,9 @@ export function App() {
     }
   }, [buildHeaders]);
 
-  const fetchCollections = useCallback(async () => {
-    setCollectionsLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/collections`, { headers: buildHeaders() });
-      const data = await res.json();
-      if (!res.ok) {
-        // Surface the error so we can debug which endpoint path is wrong
-        console.error("[collections] error:", data);
-        setCollectionActionError(data.message || `Error ${res.status} fetching collections`);
-        return;
-      }
-      console.log("[collections] raw response:", data);
-      setCollections(data.collections || []);
-    } catch (err: any) {
-      console.error("[collections] fetch failed:", err);
-      setCollectionActionError(err.message);
-    } finally {
-      setCollectionsLoading(false);
-    }
-  }, [buildHeaders]);
-
   useEffect(() => {
-    if (tab === "library") {
-      fetchLibrary();
-      fetchCollections();
-    }
-  }, [tab, fetchLibrary, fetchCollections]);
+    if (tab === "library") fetchLibrary();
+  }, [tab, fetchLibrary]);
 
   const handleLibraryAddToSlide = async (img: LibraryImage) => {
     setLibraryAddingId(img.id);
@@ -498,69 +461,6 @@ export function App() {
       setLibraryError("Couldn't delete: " + err.message);
     } finally {
       setDeletingId(null);
-    }
-  };
-
-  const handleAddToCollection = async (collectionId: string, generationId: string) => {
-    setCollectionActionLoading(true);
-    setCollectionActionError(null);
-    try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/collections/${collectionId}/generations/${generationId}`,
-        { method: "POST", headers: buildHeaders() }
-      );
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || `Error ${res.status}`);
-      }
-      setCollectionPickerGenId(null);
-      setCollectionSuccessGenId(generationId);
-      setTimeout(() => setCollectionSuccessGenId(null), 2000);
-    } catch (err: any) {
-      setCollectionActionError(err.message || "Failed to add to collection");
-    } finally {
-      setCollectionActionLoading(false);
-    }
-  };
-
-  const handleCreateAndAddCollection = async (generationId: string) => {
-    if (!newCollectionName.trim()) return;
-    setCollectionActionLoading(true);
-    setCollectionActionError(null);
-    try {
-      // Create the collection
-      const createRes = await fetch(`${BACKEND_URL}/api/collections`, {
-        method: "POST",
-        headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ name: newCollectionName.trim() }),
-      });
-      if (!createRes.ok) {
-        const e = await createRes.json().catch(() => ({}));
-        throw new Error(e.message || `Error ${createRes.status}`);
-      }
-      const createData = await createRes.json();
-      const newCol = createData.collection;
-      // Refresh collections list
-      await fetchCollections();
-      // Add image to the newly created collection if we got an id back
-      if (newCol?.id) {
-        const addRes = await fetch(
-          `${BACKEND_URL}/api/collections/${newCol.id}/generations/${generationId}`,
-          { method: "POST", headers: buildHeaders() }
-        );
-        if (!addRes.ok) {
-          const e = await addRes.json().catch(() => ({}));
-          throw new Error(e.message || `Error adding to new collection`);
-        }
-      }
-      setNewCollectionName("");
-      setCollectionPickerGenId(null);
-      setCollectionSuccessGenId(generationId);
-      setTimeout(() => setCollectionSuccessGenId(null), 2000);
-    } catch (err: any) {
-      setCollectionActionError(err.message || "Failed to create collection");
-    } finally {
-      setCollectionActionLoading(false);
     }
   };
 
@@ -759,65 +659,6 @@ export function App() {
         </div>
       )}
 
-      {/* Collection picker modal */}
-      {collectionPickerGenId && (
-        <div className="modal-overlay" onClick={() => { setCollectionPickerGenId(null); setCollectionActionError(null); setNewCollectionName(""); }}>
-          <div className="modal collection-picker-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">Add to collection</div>
-
-            {collectionActionError && (
-              <div className="error-banner" style={{ marginBottom: 8 }}>{collectionActionError}</div>
-            )}
-
-            {collectionsLoading && <div className="collection-picker-loading">Loading collections...</div>}
-
-            {!collectionsLoading && collections.length > 0 && (
-              <div className="collection-list">
-                {collections.map((col) => (
-                  <button
-                    key={col.id}
-                    className="collection-list-item"
-                    onClick={() => handleAddToCollection(col.id, collectionPickerGenId)}
-                    disabled={collectionActionLoading}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                    {col.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {!collectionsLoading && collections.length === 0 && !collectionActionError && (
-              <div className="collection-picker-empty">No collections yet — create one below</div>
-            )}
-
-            <div className="collection-new-row">
-              <input
-                className="collection-new-input"
-                placeholder="New collection name..."
-                value={newCollectionName}
-                onChange={(e) => setNewCollectionName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleCreateAndAddCollection(collectionPickerGenId); }}
-                disabled={collectionActionLoading}
-              />
-              <button
-                className="collection-new-btn"
-                onClick={() => handleCreateAndAddCollection(collectionPickerGenId)}
-                disabled={!newCollectionName.trim() || collectionActionLoading}
-              >
-                {collectionActionLoading ? "..." : "+ Create"}
-              </button>
-            </div>
-
-            <div className="modal-actions" style={{ marginTop: 8 }}>
-              <button className="modal-cancel" style={{ flex: "none", width: "100%" }} onClick={() => { setCollectionPickerGenId(null); setCollectionActionError(null); setNewCollectionName(""); }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Help modal */}
       {showHelp && (
         <div className="modal-overlay" onClick={() => setShowHelp(false)}>
@@ -988,28 +829,17 @@ export function App() {
           {libraryImages.length > 0 && (
             <div className="library-grid">
               {libraryImages.map((img) => (
-                <div key={img.id} className={`library-item ${collectionSuccessGenId === img.generationId ? "collection-success" : ""}`}>
+                <div key={img.id} className="library-item">
                   <div className="library-thumb-wrap">
                     <img src={img.url} alt={img.prompt} className="library-thumb" title={img.prompt} />
-                    <div className="library-thumb-actions">
-                      <button
-                        className="library-action-btn library-folder-btn"
-                        onClick={() => { setCollectionPickerGenId(img.generationId); setCollectionActionError(null); setNewCollectionName(""); }}
-                        title="Add to collection"
-                      >
-                        {collectionSuccessGenId === img.generationId ? "✓" : (
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                        )}
-                      </button>
-                      <button
-                        className="library-action-btn library-trash-btn"
-                        onClick={() => setConfirmDeleteId(img.id)}
-                        disabled={deletingId === img.id}
-                        title="Delete image"
-                      >
-                        {deletingId === img.id ? "…" : "🗑"}
-                      </button>
-                    </div>
+                    <button
+                      className="library-trash"
+                      onClick={() => setConfirmDeleteId(img.id)}
+                      disabled={deletingId === img.id}
+                      title="Delete image"
+                    >
+                      {deletingId === img.id ? "…" : "🗑"}
+                    </button>
                   </div>
                   <div className="library-prompt">{img.prompt}</div>
                   <button
