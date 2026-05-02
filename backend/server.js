@@ -611,9 +611,20 @@ GOOD EXAMPLE:
   const system = isInfographic ? infographicSystem : standardSystem;
   const user   = isInfographic ? infographicUser   : standardUser;
 
+  const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
+
   try {
-    const prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 512);
+    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 512);
     if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
+
+    // Truncate at last complete sentence/line if over Leonardo's limit
+    if (prompt.length > LEONARDO_PROMPT_LIMIT) {
+      prompt = prompt.slice(0, LEONARDO_PROMPT_LIMIT);
+      const lastBreak = Math.max(prompt.lastIndexOf("\n"), prompt.lastIndexOf(". "));
+      if (lastBreak > LEONARDO_PROMPT_LIMIT * 0.7) prompt = prompt.slice(0, lastBreak + 1);
+      console.log(`  ⚠ Prompt truncated to ${prompt.length} chars`);
+    }
+
     console.log(`✓ Spark Prompt generated (${prompt.length} chars, model: ${modelId})`);
     return res.json({ prompt });
   } catch (err) {
@@ -623,7 +634,7 @@ GOOD EXAMPLE:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-22", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-23", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
