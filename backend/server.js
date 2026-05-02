@@ -512,14 +512,14 @@ const MODEL_STYLE_HINTS = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-async function geminiGenerate(systemText, userText, maxTokens = 512) {
+async function geminiGenerate(systemText, userText, maxTokens = 1024) {
   const body = {
     system_instruction: { parts: [{ text: systemText }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.9,
-      thinkingConfig: { thinkingBudget: 0 },  // disable reasoning tokens — we want the full response as the prompt
+      thinkingConfig: { thinkingBudget: 2048 },  // internal reasoning budget — steps stay hidden, only Step 4 prompt is output
     },
   };
   const res = await fetch(GEMINI_URL, {
@@ -532,7 +532,15 @@ async function geminiGenerate(systemText, userText, maxTokens = 512) {
     throw new Error(err.error?.message || `Gemini error ${res.status}`);
   }
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  // Collect all text parts (thinking tokens arrive as separate parts — skip them, take only the final text)
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const raw = parts.map(p => p.text || "").join("").trim();
+
+  // Fallback parser: if steps leaked into the output, extract just the Step 4 content
+  const step4Match = raw.match(/STEP\s*4[^:\n]*[:\-]+\s*([\s\S]+)/i);
+  if (step4Match) return step4Match[1].trim();
+
+  return raw;
 }
 
 app.post("/api/magic-prompt", async (req, res) => {
@@ -671,7 +679,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-31", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-32", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
