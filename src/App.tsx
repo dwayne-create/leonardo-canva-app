@@ -187,6 +187,7 @@ export function App() {
   const [sparkError,      setSparkError]      = useState<string | null>(null);
   const [promptStyle,     setPromptStyle]     = useState("Photography");
   const [showStyleModal,  setShowStyleModal]  = useState(false);
+  const [sparkSlideImage, setSparkSlideImage] = useState<string | null>(null); // base64 JPEG of pasted slide
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -387,6 +388,25 @@ export function App() {
     setShowStyleModal(true);
   }, []);
 
+  // Handle image paste inside the style modal (for slide screenshot)
+  const handleStyleModalPaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          setSparkSlideImage(result); // store full data URL
+        };
+        reader.readAsDataURL(blob);
+        break;
+      }
+    }
+  }, []);
+
   const handleSparkGenerate = useCallback(async () => {
     setShowStyleModal(false);
     setSparkLoading(true);
@@ -410,25 +430,33 @@ export function App() {
       // Content querying unavailable — proceed without slide text
     }
 
+    // Extract base64 from pasted slide image (strip data URL prefix)
+    const slideImageB64 = sparkSlideImage
+      ? sparkSlideImage.split(",")[1] || null
+      : null;
+
     // Call backend /api/magic-prompt
     try {
       const res = await fetch(`${BACKEND_URL}/api/magic-prompt`, {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ slideText, modelId, promptStyle }),
+        body: JSON.stringify({ slideText, modelId, promptStyle, slideImage: slideImageB64 }),
       });
       const data = await res.json() as Record<string, string>;
       if (!res.ok) {
         setSparkError(data.message || "Spark Prompt failed");
         return;
       }
-      if (data.prompt) setPrompt(data.prompt);
+      if (data.prompt) {
+        setPrompt(data.prompt);
+        setSparkSlideImage(null); // clear after use
+      }
     } catch {
       setSparkError("Network error — is Render running?");
     } finally {
       setSparkLoading(false);
     }
-  }, [buildHeaders, modelId, promptStyle]);
+  }, [buildHeaders, modelId, promptStyle, sparkSlideImage]);
 
   // When model changes, trim refs, snap dimensions, and cap count
   const handleModelChange = useCallback((newId: string) => {
@@ -795,9 +823,30 @@ export function App() {
       {/* Style picker modal — opens when user clicks Spark Prompt */}
       {showStyleModal && (
         <div className="modal-overlay" onClick={() => setShowStyleModal(false)}>
-          <div className="modal style-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal style-modal" onClick={(e) => e.stopPropagation()} onPaste={handleStyleModalPaste}>
             <div className="modal-title">Select your style of image</div>
-            <p className="style-modal-sub">Spark Prompt reads your slide text and finds a complementary image — not a literal illustration, but a visual that amplifies the feeling.</p>
+            <p className="style-modal-sub">Spark Prompt reads your slide and finds a visual that amplifies the feeling — not a literal illustration.</p>
+
+            {/* Slide screenshot paste zone */}
+            <div
+              className={`spark-paste-zone ${sparkSlideImage ? "spark-paste-zone--filled" : ""}`}
+              onPaste={handleStyleModalPaste}
+              tabIndex={0}
+            >
+              {sparkSlideImage ? (
+                <div className="spark-paste-preview">
+                  <img src={sparkSlideImage} alt="Slide preview" className="spark-paste-img" />
+                  <button className="spark-paste-clear" onClick={(e) => { e.stopPropagation(); setSparkSlideImage(null); }}>✕</button>
+                </div>
+              ) : (
+                <div className="spark-paste-hint">
+                  <span className="spark-paste-icon">📋</span>
+                  <span>Screenshot your slide, then <strong>Cmd+V</strong> to paste it here</span>
+                  <span className="spark-paste-sub">Gemini will see your slide's visual design</span>
+                </div>
+              )}
+            </div>
+
             <div className="style-modal-grid">
               {[
                 { label: "Photography",           icon: "📷" },

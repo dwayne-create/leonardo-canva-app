@@ -512,10 +512,20 @@ const MODEL_STYLE_HINTS = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-async function geminiGenerate(systemText, userText, maxTokens = 2000) {
+// slideImageB64: optional raw base64 JPEG string (no data: prefix) from user screenshot paste
+async function geminiGenerate(systemText, userText, maxTokens = 2000, slideImageB64 = null) {
+  // Build user parts — prepend slide image if provided
+  const userParts = [];
+  if (slideImageB64) {
+    userParts.push({ inline_data: { mime_type: "image/jpeg", data: slideImageB64 } });
+    userParts.push({ text: userText });
+  } else {
+    userParts.push({ text: userText });
+  }
+
   const body = {
     system_instruction: { parts: [{ text: systemText }] },
-    contents: [{ role: "user", parts: [{ text: userText }] }],
+    contents: [{ role: "user", parts: userParts }],
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.9,
@@ -560,8 +570,10 @@ app.post("/api/magic-prompt", async (req, res) => {
     });
   }
 
-  const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
+  const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography", slideImage = null } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
+  const hasSlideImage = typeof slideImage === "string" && slideImage.length > 0;
+  console.log(`  Spark Prompt: style=${promptStyle}, slideImage=${hasSlideImage}, slideText="${slideText.slice(0, 60)}..."`);
 
   const isInfographic = promptStyle === "Infographic";
 
@@ -680,8 +692,8 @@ RULES:
 - Return ONLY the raw prompt — zero preamble, zero explanation, no word/character count`;
 
   const standardUser = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point. Step 1B: find the insight in those numbers. Step 2: apply the ${promptStyle} lens. Step 3: build the metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters. Output the prompt only.`
-    : `No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. Comma-separated descriptors only. Under 1400 characters.`;
+    ? `${hasSlideImage ? "The slide image above shows the actual visual design of the slide.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point (or mine word visual meanings for title-only slides). Step 1B: find the insight. Step 2: apply the ${promptStyle} lens. Step 3: build ONE unified metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters. ${hasSlideImage ? "Match the colour palette and visual design language from the slide image." : ""} Output the prompt only.`
+    : `${hasSlideImage ? "The slide image above shows the actual visual design. " : ""}No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. ${hasSlideImage ? "Match the visual style and colour palette of the slide. " : ""}Comma-separated descriptors only. Under 1400 characters.`;
 
   const system = isInfographic ? infographicSystem : standardSystem;
   const user   = isInfographic ? infographicUser   : standardUser;
@@ -689,7 +701,7 @@ RULES:
   const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
 
   try {
-    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 1024);
+    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 2000, hasSlideImage ? slideImage : null);
     if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
 
     // Truncate at last complete sentence/line if over Leonardo's limit
@@ -709,7 +721,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-36", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-37", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
