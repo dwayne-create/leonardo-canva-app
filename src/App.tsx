@@ -826,40 +826,20 @@ export function App() {
       {/* Style picker modal — opens when user clicks Spark Prompt */}
       {showStyleModal && (
         <div className="modal-overlay" onClick={() => setShowStyleModal(false)}>
-          <div className="modal style-modal" onClick={(e) => e.stopPropagation()} onPaste={handleStyleModalPaste}>
+          <div className="modal style-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title">Select your style of image</div>
             <p className="style-modal-sub">Spark Prompt reads your slide and finds a visual that amplifies the feeling — not a literal illustration.</p>
-
-            {/* Slide screenshot paste zone */}
-            <div
-              className={`spark-paste-zone ${sparkSlideImage ? "spark-paste-zone--filled" : ""}`}
-              onPaste={handleStyleModalPaste}
-              tabIndex={0}
-            >
-              {sparkSlideImage ? (
-                <div className="spark-paste-preview">
-                  <img src={sparkSlideImage} alt="Slide preview" className="spark-paste-img" />
-                  <button className="spark-paste-clear" onClick={(e) => { e.stopPropagation(); setSparkSlideImage(null); }}>✕</button>
-                </div>
-              ) : (
-                <div className="spark-paste-hint">
-                  <span className="spark-paste-icon">📋</span>
-                  <span>Screenshot your slide, then <strong>Cmd+V</strong> to paste it here</span>
-                  <span className="spark-paste-sub">Gemini will see your slide's visual design</span>
-                </div>
-              )}
-            </div>
 
             <div className="style-modal-grid">
               {[
                 { label: "Photography",           icon: "📷" },
                 { label: "Illustration",          icon: "🎨" },
-                { label: "Fine Art",              icon: "🖼" },
+                { label: "Magazine Cover",        icon: "📰" },
                 { label: "Abstract",              icon: "🌀" },
                 { label: "3D / CGI",              icon: "🧊" },
                 { label: "Cinematic / Film",      icon: "🎬" },
                 { label: "Stylized / Aesthetic",  icon: "✨" },
-                { label: "Experimental",          icon: "🔬" },
+                { label: "Print Ad",              icon: "🖨️" },
                 { label: "Graphic Design",        icon: "✏️" },
                 { label: "Infographic",           icon: "📊" },
               ].map(({ label, icon }) => (

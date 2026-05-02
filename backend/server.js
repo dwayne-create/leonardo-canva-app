@@ -577,12 +577,12 @@ app.post("/api/magic-prompt", async (req, res) => {
   const STYLE_HINT = {
     "Photography":          "Shoot it: decisive moment, real scene, lens choice, natural light, depth of field, human truth.",
     "Illustration":         "Draw it: bold editorial scene, expressive characters, graphic storytelling, strong colour contrast.",
-    "Fine Art":             "Paint it: brushwork, chiaroscuro, classical composition, symbolic colour, painterly texture.",
+    "Magazine Cover":       "Cover it: bold hero image, striking typography space, glossy editorial feel, aspirational mood, newsstand impact.",
     "3D / CGI":             "Render it: impossible materials, surreal precision, perfect lighting, things that can't be photographed.",
     "Cinematic / Film":     "Film it: cinematic shot, colour grade, anamorphic lens, atmosphere, dramatic silhouette.",
     "Abstract":             "Feel it: pure shapes, colour relationships, gestural marks, negative space, emotional tension.",
     "Stylized / Aesthetic": "Style it: dreamlike tones, nostalgic grain, aesthetic movement — vaporwave, brutalism, cottagecore.",
-    "Experimental":         "Break it: double exposure, glitch, mixed media, impossible scale, surreal rule-breaking.",
+    "Print Ad":             "Sell it: single powerful visual, clean negative space, headline-ready composition, brand-quality polish, ad-grade production.",
     "Graphic Design":       "Design it: bold geometry, Swiss grid, limited palette, strong contrast, poster impact.",
     "Technical":            "Diagram it: cross-section, blueprint, clean linework, annotation style, engineering precision.",
     "Infographic":          "Map it: all real data, clear layout, sections, icons, editorial style, premium design.",
@@ -673,7 +673,7 @@ app.get("/api/proxy-image", async (req, res) => {
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-39", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-40", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
