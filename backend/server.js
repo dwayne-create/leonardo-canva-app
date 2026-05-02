@@ -592,7 +592,7 @@ RULES:
   // Reasoning-first, style-as-lens approach.
   const STYLE_LENS = {
     "Photography":          "Think like a photographer: what is the decisive moment, the real-world scene, the lens choice, the natural light quality that captures this truth? Photography earns its power from authenticity — a real crowd, a real place, a real texture. Exploit: depth of field, golden hour, aerial perspective, human faces, tactile surfaces.",
-    "Illustration":         "Think like an editorial illustrator: what composition, character design, and colour symbolism tells this story at a glance? Illustration can show things that don't exist — metaphorical split worlds, impossible scale, symbolic bridges. Exploit: visual narrative, expressive characters, bold colour contrast, flat vs detailed zones, graphic storytelling.",
+    "Illustration":         "Think like an editorial illustrator: what single composition, character, or moment tells this story at a glance? The best editorial illustrations are ONE unified scene — not split panels. Find the single image that contains the entire insight: a character, an impossible object, a symbolic act. Exploit: visual narrative, expressive characters, bold colour contrast, impossible scale, graphic storytelling.",
     "Fine Art":             "Think like a painter: what painterly tradition or technique amplifies this message? Oil, watercolour, impasto, classical composition? Fine art can carry weight and gravitas that photography can't. Exploit: brushwork texture, chiaroscuro, classical figure composition, symbolic colour, art historical references.",
     "3D / CGI":             "Think like a 3D artist: what impossible architecture, material, or environment could only exist in CGI? 3D owns precision, impossible scale, perfect lighting control, and surreal materials. Exploit: glass and chrome, impossible structures, god-rays, photorealistic render of things that can't be photographed, macro impossible detail.",
     "Cinematic / Film":     "Think like a cinematographer: what shot, grade, and atmosphere would a director choose for this story beat? Cinema controls time and emotion through composition and colour grade. Exploit: anamorphic lens flare, teal-orange grade, rack focus, wide establishing shots, dramatic silhouette, atmosphere and haze.",
@@ -621,16 +621,22 @@ ${styleLens}
 Ask: what can ${promptStyle} do here that NO OTHER STYLE could do as well? That's your angle.
 
 STEP 3 — BUILD THE VISUAL METAPHOR (think, don't output):
-What scene, composition, or concept embodies the insight through this style's unique strengths? Avoid literal — use metaphor, scale, contrast, atmosphere. The image should make someone FEEL the insight without any text or labels.
+Find ONE unified scene, object, or moment that makes the viewer FEEL the insight — without labels, text, or explanation.
+
+CRITICAL METAPHOR RULES:
+- The metaphor must be a SINGLE unified image — not two halves, not left/right, not split panels
+- If you find yourself thinking "left side... right side..." or "split scene" — STOP. That is literal data mapping disguised as a metaphor. Find a single thing that contains the whole tension inside it
+- Ask: what ONE object, creature, place, or moment already contains both forces of this insight within itself? A prism contains both order and chaos. A wave contains both power and fragility. A seed contains both potential and constraint.
+- The best metaphors are surprising. If it sounds like a diagram or a comparison chart, it is not a metaphor.
 
 STEP 4 — WRITE THE PROMPT (this is your output):
 Comma-separated Leonardo descriptors only. No full sentences. No explanation. Under 1400 characters.
 End with: style/medium, lighting quality, render/camera spec.
 
 RULES:
-- NEVER produce a bar chart, diagram, graph, node map, Venn diagram, or any labelled visual
+- NEVER produce a bar chart, diagram, graph, node map, Venn diagram, split panel, or labelled visual
 - NEVER write in sentences — comma-separated descriptors only
-- NEVER use these words: presentation, corporate, slide, ripple, sunburst, expanding, infographic
+- NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic, "left side", "right side", "split scene"
 - ALWAYS match the slide's implied colour palette
 - ALWAYS complete all four reasoning steps internally before writing output
 - Return ONLY the raw prompt — zero preamble, zero explanation`;
@@ -665,7 +671,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-30", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-31", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
