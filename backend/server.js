@@ -569,6 +569,7 @@ RULES:
 - Group related data into logical sections (3–6 sections)
 - Be specific about visualisation per section (bar chart, icon row, ratio illustration, etc.)
 - Visual style should feel premium, editorial, and clean
+- STRICT LIMIT: total output must be under 1400 characters — be concise in section descriptions
 - Return ONLY the prompt — no preamble, no explanation`;
 
   const infographicUser = slideText.trim()
@@ -594,7 +595,7 @@ HARD RULES:
 - NEVER write in sentences — comma-separated descriptors only
 - NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic
 - Match the slide's colour palette
-- Length: 40–70 words maximum
+- Length: 40–70 words, STRICT maximum 1400 characters total
 - End with: style, lighting, camera/medium
 - Return ONLY the raw prompt — zero explanation, zero preamble
 
@@ -634,7 +635,7 @@ GOOD EXAMPLE:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-23", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-24", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
