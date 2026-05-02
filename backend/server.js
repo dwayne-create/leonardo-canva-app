@@ -537,10 +537,17 @@ async function geminiGenerate(systemText, userText, maxTokens = 1024) {
   const raw = parts.map(p => p.text || "").join("").trim();
 
   // Fallback parser: if steps leaked into the output, extract just the Step 4 content
+  let result = raw;
   const step4Match = raw.match(/STEP\s*4[^:\n]*[:\-]+\s*([\s\S]+)/i);
-  if (step4Match) return step4Match[1].trim();
+  if (step4Match) result = step4Match[1].trim();
 
-  return raw;
+  // Strip any trailing metadata Gemini appends (word counts, char counts, notes like "141 words", "Note: ...")
+  result = result
+    .replace(/,?\s*\d+\s+(?:words?|characters?|chars?)\s*\.?\s*$/i, "")
+    .replace(/\n+Note:.*$/is, "")
+    .trim();
+
+  return result;
 }
 
 app.post("/api/magic-prompt", async (req, res) => {
@@ -646,8 +653,20 @@ CRITICAL METAPHOR RULES:
 - The best metaphors are surprising. If it sounds like a diagram or a comparison chart, it is not a metaphor.
 
 STEP 4 — WRITE THE PROMPT (this is your output):
-Comma-separated Leonardo descriptors only. No full sentences. No explanation. Under 1400 characters.
-End with: style/medium, lighting quality, render/camera spec.
+Write 15–25 comma-separated Leonardo descriptors. Aim for 400–900 characters. No full sentences. No explanation.
+
+The descriptors must come DIRECTLY from your Step 3 metaphor — not from generic style words. Every descriptor should be earned by the reasoning, not borrowed from a style template.
+
+BAD (generic, unearned): "abstract crystalline structures, interconnected geometric planes, clean lines, subtle gradients"
+GOOD (specific, reasoned): "glass optical prism catching direct sunlight, white beam fracturing into violet indigo blue green yellow orange red spectrum bands, prismatic rainbow cast across dark obsidian surface, macro photography, f/2.8 aperture, studio light"
+
+Structure your output in this order:
+1. The central subject / metaphor object (specific, visual, from Step 3)
+2. The action or moment happening (what is it doing / what state is it in)
+3. Environment / surface / context (what surrounds it)
+4. Colour palette (specific hues, not just "vibrant" — name the actual colours)
+5. Lighting (direction, quality, type)
+6. Style / medium / render spec
 
 RULES:
 - NEVER produce a bar chart, diagram, graph, node map, Venn diagram, split panel, or labelled visual
@@ -655,7 +674,7 @@ RULES:
 - NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic, "left side", "right side", "split scene"
 - ALWAYS match the slide's implied colour palette
 - ALWAYS complete all four reasoning steps internally before writing output
-- Return ONLY the raw prompt — zero preamble, zero explanation`;
+- Return ONLY the raw prompt — zero preamble, zero explanation, no word/character count`;
 
   const standardUser = slideText.trim()
     ? `Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point. Step 1B: find the insight in those numbers. Step 2: apply the ${promptStyle} lens. Step 3: build the metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters. Output the prompt only.`
@@ -667,7 +686,7 @@ RULES:
   const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
 
   try {
-    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 512);
+    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 1024);
     if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
 
     // Truncate at last complete sentence/line if over Leonardo's limit
@@ -687,7 +706,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-33", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-34", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
