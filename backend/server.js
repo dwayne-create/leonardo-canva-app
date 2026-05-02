@@ -224,14 +224,13 @@ app.get("/api/library", async (req, res) => {
       return res.status(500).json({ message: "Could not resolve Leonardo user id" });
     }
 
-    // Step 2: paginate Leonardo (caps at 100 generations per request)
-    // Fetch in batches of 100 until we have enough images or run out of history
-    const BATCH = 100;
+    // Step 2: paginate Leonardo — API hard-caps at 50 generations per request.
+    // Increment offset by actual generations returned each loop to avoid skipping.
+    const BATCH = 50;
     const images = [];
     let genOffset = 0;
-    let exhausted = false;
 
-    while (images.length < targetImages && !exhausted) {
+    while (images.length < targetImages) {
       const histRes = await fetch(
         `${LEONARDO_BASE}/generations/user/${userId}?offset=${genOffset}&limit=${BATCH}`,
         { headers: { Authorization: `Bearer ${apiKey}` } }
@@ -243,7 +242,7 @@ app.get("/api/library", async (req, res) => {
       }
 
       const generations = histData?.generations || [];
-      if (generations.length === 0) { exhausted = true; break; }
+      if (generations.length === 0) break; // no more history
 
       for (const gen of generations) {
         for (const img of gen.generated_images || []) {
@@ -262,9 +261,9 @@ app.get("/api/library", async (req, res) => {
         if (images.length >= targetImages) break;
       }
 
-      // If Leonardo returned fewer than BATCH, we've hit the end of history
-      if (generations.length < BATCH) { exhausted = true; break; }
-      genOffset += BATCH;
+      // Advance by actual count returned; stop if we got a short page (end of history)
+      genOffset += generations.length;
+      if (generations.length < BATCH) break;
     }
 
     console.log(`✓ Library: returned ${images.length} images (batches from offset 0..${genOffset})`);
@@ -666,7 +665,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-29", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-30", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
