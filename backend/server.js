@@ -512,14 +512,18 @@ const MODEL_STYLE_HINTS = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-async function geminiGenerate(systemText, userText, maxTokens = 1024) {
+async function geminiGenerate(systemText, userText, maxTokens = 2000) {
   const body = {
     system_instruction: { parts: [{ text: systemText }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.9,
-      thinkingConfig: { thinkingBudget: 2048 },  // internal reasoning budget — steps stay hidden, only Step 4 prompt is output
+      thinkingConfig: { thinkingBudget: 0 },
+      // thinkingBudget:0 — forces ALL reasoning into the output text.
+      // With thinking enabled, Gemini does the work internally then produces a brief output summary.
+      // With thinking disabled, Gemini writes out every step in full — step4Match then carves out
+      // just the Step 4 content, which is richer and more complete.
     },
   };
   const res = await fetch(GEMINI_URL, {
@@ -532,19 +536,15 @@ async function geminiGenerate(systemText, userText, maxTokens = 1024) {
     throw new Error(err.error?.message || `Gemini error ${res.status}`);
   }
   const data = await res.json();
-  // Filter out thinking parts (thought: true) — only take actual output text.
-  // Joining all parts without filtering causes the step4Match regex to fire on Gemini's
-  // internal reasoning ("STEP 4" appears in the thinking), returning thinking text instead of output.
-  const allParts = data.candidates?.[0]?.content?.parts || [];
-  const outputParts = allParts.filter(p => !p.thought);
-  const raw = outputParts.map(p => p.text || "").join("").trim();
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const raw = parts.map(p => p.text || "").join("").trim();
 
-  // Fallback parser: if step labels leaked into the actual output, extract just the Step 4 content
-  let result = raw;
+  // Primary parser: extract everything after "STEP 4" header — that IS the image prompt.
+  // With thinkingBudget:0, the full reasoning chain is in the output and this carves just Step 4.
   const step4Match = raw.match(/STEP\s*4[^:\n]*[:\-]+\s*([\s\S]+)/i);
-  if (step4Match) result = step4Match[1].trim();
+  let result = step4Match ? step4Match[1].trim() : raw;
 
-  // Strip any trailing metadata Gemini appends (word counts, char counts, notes like "141 words", "Note: ...")
+  // Strip any trailing metadata Gemini appends (word counts, char counts, "Note: ...")
   result = result
     .replace(/,?\s*\d+\s+(?:words?|characters?|chars?)\s*\.?\s*$/i, "")
     .replace(/\n+Note:.*$/is, "")
@@ -709,7 +709,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-35", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-36", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
