@@ -1162,8 +1162,8 @@ export function App() {
         )}
       </button>
 
-      {/* Magic Layers concept button */}
-      <button className="magic-layers-btn" onClick={() => setShowMagicLayers(true)}>
+      {/* Magic Layers concept button — hidden until an image has been generated */}
+      <button className={`magic-layers-btn ${previewUrls.length > 0 ? "ml-visible" : "ml-hidden"}`} onClick={() => setShowMagicLayers(true)}>
         <span className="ml-btn-text">Create Magic Layers</span>
         <div className="ml-btn-icon">
           <svg width="22" height="22" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">

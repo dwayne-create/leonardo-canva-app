@@ -977,7 +977,19 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: all 0.2s;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.ml-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+}
+
+.ml-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .magic-layers-btn:hover {
