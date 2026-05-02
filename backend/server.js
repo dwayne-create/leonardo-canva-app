@@ -533,29 +533,35 @@ app.post("/api/magic-prompt", async (req, res) => {
   const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
 
-  const system = `You are a visual creative director building a hero image to sit alongside a presentation slide. Your job is two-part:
+  const system = `You are a professional Leonardo.AI prompt engineer. You write short, punchy image prompts in the Leonardo style — comma-separated descriptors, NOT full sentences or marketing copy.
 
-PART 1 — READ THE SLIDE: From the slide text, infer the visual identity: dominant color mood (e.g. "deep purple corporate energy", "warm amber optimism"), emotional tone, and the core theme.
+TASK: Given a presentation slide's text, write a Leonardo prompt for a BACKGROUND or HERO IMAGE that visually complements the slide.
 
-PART 2 — DIRECT THE COMPLEMENTARY IMAGE: Design an image that HARMONISES with that visual identity without duplicating the slide content. The image should feel like it belongs in the same visual world — matching the color temperature and mood — but show a scene, texture, or atmosphere that ADDS to the story rather than repeating it.
+STEP 1 — Infer the slide's visual world: What colour palette does this slide imply? What is the emotional register (bold/corporate, warm/human, dark/dramatic, etc.)?
 
-You are generating a prompt for Leonardo.AI's ${modelId} model, which excels at ${styleHint}.
-The visual style selected by the user is: "${promptStyle}".
+STEP 2 — Choose a complementary subject: Pick a scene, texture, landscape, or abstract visual that amplifies the slide's FEELING — not one that illustrates its words. Think atmosphere, not diagram.
 
-Output format — write ONE prompt paragraph, 60-130 words, structured like this:
-[Color/mood anchor that ties to the slide's visual identity], [the complementary scene or texture], [lighting and atmosphere details], [composition and focal point], [style/medium at the end].
+HARD RULES:
+- NEVER use the words: infographic, data, chart, diagram, presentation, business, corporate, slide, ripple, sunburst, expanding
+- NEVER write in sentences — use comma-separated descriptors only
+- NEVER describe what's already on the slide
+- Match the inferred colour palette (dark/purple slide → deep indigo tones; warm slide → amber/gold; etc.)
+- Length: 40–70 words maximum
+- End with: style, lighting quality, camera/medium (e.g. "shot on 50mm, golden hour, cinematic" or "digital painting, rim lighting, 8K")
+- Return ONLY the raw prompt — zero explanation, zero preamble
 
-Example structure: "Deep violet atmospheric haze — [scene that amplifies the slide's theme] — [lighting] — [composition] — ${promptStyle.toLowerCase()} style."
+Style selected: "${promptStyle}"
+Model: ${modelId} (excels at ${styleHint})
 
-Rules:
-- DO match the inferred color palette of the slide (e.g. if the slide feels purple/dark, the image should share that tonal family)
-- DO NOT illustrate the slide text literally — find the feeling, not the words
-- Be specific: lighting quality, colour palette, composition, textures, focal point
-- Return ONLY the raw image prompt — no explanation, no preamble`;
+GOOD EXAMPLE OUTPUT:
+"lone lighthouse on jagged black cliffs, deep indigo storm sky, bioluminescent ocean waves, low angle wide shot, volumetric fog, moody cinematic photography, sony a7iii 24mm, golden ratio composition, 8K"
+
+BAD EXAMPLE OUTPUT (never do this):
+"A vibrant infographic background with a radiating sunburst representing growth and momentum in fuchsia and orange gradients..."`;
 
   const user = slideText.trim()
-    ? `The slide contains this text:\n\n"${slideText.trim()}"\n\nStep 1: What is the visual identity of this slide? (color mood, emotional tone, energy level)\nStep 2: What complementary image — sharing that visual identity but NOT illustrating the words — would make this slide more powerful?\n\nWrite the final Leonardo prompt directly. No preamble.`
-    : `The slide has no text. Generate a striking, versatile dark-toned image prompt for a professional presentation background — rich color, dramatic lighting, abstract or architectural.`;
+    ? `Slide text: "${slideText.trim()}"\n\nInfer the colour mood and emotion from this slide. Then write a Leonardo prompt for a complementary image. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
+    : `No slide text. Write a powerful, dark-toned Leonardo prompt for a professional presentation background. Comma-separated descriptors only. 40–70 words.`;
 
   try {
     const prompt = await geminiGenerate(system, user);
@@ -569,7 +575,7 @@ Rules:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-17", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-18", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
