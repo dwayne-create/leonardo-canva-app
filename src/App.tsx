@@ -285,7 +285,7 @@ export function App() {
     setLibPickerLoading(true);
     setLibPickerError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/library?limit=120`, { headers: buildHeaders() });
+      const res = await fetch(`${BACKEND_URL}/api/library?limit=180`, { headers: buildHeaders() });
       if (!res.ok) throw new Error("Failed to load library");
       const data = await res.json();
       setLibPickerImages(data.images || []);

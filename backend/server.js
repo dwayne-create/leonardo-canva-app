@@ -209,7 +209,7 @@ app.get("/api/generation/:id", async (req, res) => {
 // ─── GET /api/library ────────────────────────────────────────────────────────
 // Returns the authenticated user's recent generation history.
 app.get("/api/library", async (req, res) => {
-  const limit  = Math.min(parseInt(req.query.limit  || "40", 10), 100);
+  const limit  = Math.min(parseInt(req.query.limit  || "40", 10), 200);
   const offset = parseInt(req.query.offset || "0", 10);
   const apiKey = resolveKey(req);
 
@@ -653,7 +653,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-27", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-28", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
