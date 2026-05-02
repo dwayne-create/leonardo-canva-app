@@ -770,6 +770,10 @@ export function App() {
                 <p><strong>Generate button</strong> — shows the estimated credit cost before you click. The first result is added to your slide automatically.</p>
               </div>
               <div className="help-section">
+                <div className="help-h">✨ Spark Prompt</div>
+                <p>Spark Prompt uses AI to write a Leonardo prompt based on your slide content — so you don't have to. Click <strong>✨ Spark Prompt</strong> in the Generate tab, pick a visual style (Photography, Magazine Cover, 3D / CGI, Infographic, etc.), then hit <strong>Generate Prompt</strong>. Gemini reads the text on your current slide and writes a prompt tailored to the style you chose. You can edit the prompt before generating.</p>
+              </div>
+              <div className="help-section">
                 <div className="help-h">🖼 Library tab</div>
                 <p>Browse all your past generations. Click "+ Add to slide" to insert any image, or the 🗑 icon to delete it from your Leonardo account.</p>
               </div>
