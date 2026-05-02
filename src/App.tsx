@@ -1137,7 +1137,7 @@ export function App() {
             disabled={isGenerating || sparkLoading}
             title="Read your slide and generate a smart prompt with AI"
           >
-            {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}
+            {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}<span className="beta-badge">beta</span>
           </button>
         </div>
 

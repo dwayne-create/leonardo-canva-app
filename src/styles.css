@@ -726,6 +726,22 @@ body {
   50%       { opacity: 1;   }
 }
 
+.beta-badge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 5px;
+  background: rgba(110,96,238,0.12);
+  border: 1px solid rgba(110,96,238,0.25);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #6E60EE;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+
 .spark-error {
   background: #fff7ed;
   border: 1px solid #fed7aa;
