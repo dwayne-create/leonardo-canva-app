@@ -542,7 +542,7 @@ STEP 1 — Infer the slide's visual world: What colour palette does this slide i
 STEP 2 — Choose a complementary subject: Pick a scene, texture, landscape, or abstract visual that amplifies the slide's FEELING — not one that illustrates its words. Think atmosphere, not diagram.
 
 HARD RULES:
-- NEVER use the words: infographic, data, chart, diagram, presentation, business, corporate, slide, ripple, sunburst, expanding
+- NEVER use the words: data, chart, diagram, presentation, business, corporate, slide, ripple, sunburst, expanding${promptStyle === "Infographic" ? "" : ", infographic"}
 - NEVER write in sentences — use comma-separated descriptors only
 - NEVER describe what's already on the slide
 - Match the inferred colour palette (dark/purple slide → deep indigo tones; warm slide → amber/gold; etc.)
@@ -575,7 +575,7 @@ BAD EXAMPLE OUTPUT (never do this):
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-18", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-19", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);

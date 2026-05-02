@@ -803,12 +803,12 @@ export function App() {
                 { label: "Photography",           icon: "📷" },
                 { label: "Illustration",          icon: "🎨" },
                 { label: "Fine Art",              icon: "🖼" },
-                { label: "Graphic Design",        icon: "✏️" },
+                { label: "Abstract",              icon: "🌀" },
                 { label: "3D / CGI",              icon: "🧊" },
                 { label: "Cinematic / Film",      icon: "🎬" },
                 { label: "Stylized / Aesthetic",  icon: "✨" },
                 { label: "Experimental",          icon: "🔬" },
-                { label: "Technical",             icon: "📐" },
+                { label: "Graphic Design",        icon: "✏️" },
                 { label: "Infographic",           icon: "📊" },
               ].map(({ label, icon }) => (
                 <button
