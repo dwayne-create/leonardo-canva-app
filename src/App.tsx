@@ -63,10 +63,10 @@ function estimateCredits(model: typeof MODELS[0], w: number, h: number, qty: num
 // - NB Pro: grid values ✓   - GPT Image 2: mod-16, ratio ok, pixels ok ✓
 // - Seedream 4.5: mod-8, in range ✓  - Flux 2 Pro: max 1440, mod-8 ✓
 const STANDARD_SIZES = [
+  { label: "16:9", w: 1376, h: 768  },
   { label: "1:1",  w: 1024, h: 1024 },
   { label: "2:3",  w: 848,  h: 1264 },
   { label: "3:2",  w: 1264, h: 848  },
-  { label: "16:9", w: 1376, h: 768  },
   { label: "4:3",  w: 1200, h: 896  },
   { label: "9:16", w: 768,  h: 1376 },
 ];
@@ -147,10 +147,10 @@ export function App() {
   const [modelId, setModelId]           = useState(MODELS[0].id);
   const [quality, setQuality]           = useState<Quality>("medium");
   const [count, setCount]               = useState(1);
-  const [width, setWidth]               = useState(1024);
-  const [height, setHeight]             = useState(1024);
+  const [width, setWidth]               = useState(1376);
+  const [height, setHeight]             = useState(768);
   const [prompt, setPrompt]             = useState("");
-  const [activePreset, setActivePreset] = useState("1:1");
+  const [activePreset, setActivePreset] = useState("16:9");
   const [isGenerating, setIsGenerating] = useState(false);
   const [status, setStatus]             = useState<string | null>(null);
   const [previewUrls, setPreviewUrls]   = useState<string[]>([]);
