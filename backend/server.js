@@ -500,12 +500,12 @@ const MODEL_STYLE_HINTS = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-async function geminiGenerate(systemText, userText) {
+async function geminiGenerate(systemText, userText, maxTokens = 512) {
   const body = {
     system_instruction: { parts: [{ text: systemText }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
     generationConfig: {
-      maxOutputTokens: 512,
+      maxOutputTokens: maxTokens,
       temperature: 0.9,
       thinkingConfig: { thinkingBudget: 0 },  // disable reasoning tokens — we want the full response as the prompt
     },
@@ -533,7 +533,52 @@ app.post("/api/magic-prompt", async (req, res) => {
   const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
 
-  const system = `You are a professional Leonardo.AI prompt engineer. You write short, punchy image prompts in the Leonardo style — comma-separated descriptors, NOT full sentences or marketing copy.
+  const isInfographic = promptStyle === "Infographic";
+
+  // ── INFOGRAPHIC MODE ─────────────────────────────────────────────────────
+  // Generates a detailed structured brief with real data, sections, layout,
+  // and visual style — not a feeling-based prompt.
+  const infographicSystem = `You are an expert infographic designer writing a detailed image generation brief for Leonardo.AI.
+
+TASK: Read the slide text and produce a structured infographic prompt that includes the real data, a clear layout, and precise visual style instructions. This is a FULL BRIEF — not a short descriptor list.
+
+OUTPUT FORMAT — follow this structure exactly:
+
+A premium editorial infographic [topic].
+
+Layout:
+[describe the overall layout — vertical/horizontal, number of sections, hierarchy]
+
+Header:
+"[Main title from the slide]"
+
+[For each key data group, create a numbered Section:]
+Section N — [Section name]:
+- [data point or stat]
+- [data point or stat]
+[Describe how to visualise it — bars, icons, scaling, etc.]
+
+Visual Style:
+[typography style, color palette, design language, icons, grid system, spacing]
+
+Background:
+[white/dark/gradient, feel — magazine, Swiss design, editorial, etc.]
+
+RULES:
+- Extract ALL real numbers and stats from the slide text — include them verbatim
+- Group related data into logical sections (3–6 sections)
+- Be specific about visualisation per section (bar chart, icon row, ratio illustration, etc.)
+- Visual style should feel premium, editorial, and clean
+- Return ONLY the prompt — no preamble, no explanation`;
+
+  const infographicUser = slideText.trim()
+    ? `Slide text:\n"${slideText.trim()}"\n\nExtract all data points, group into sections, and write the full structured infographic prompt. Follow the format exactly. No preamble.`
+    : `No slide text. Write a clean editorial infographic prompt for a professional data presentation. Follow the format.`;
+
+  // ── ALL OTHER STYLES ─────────────────────────────────────────────────────
+  // Generates a short comma-separated Leonardo descriptor prompt that
+  // captures the FEELING of the slide, not a literal diagram.
+  const standardSystem = `You are a professional Leonardo.AI prompt engineer. You write short, punchy image prompts in the Leonardo style — comma-separated descriptors, NOT full sentences or marketing copy.
 
 TASK: Given a presentation slide's text, write a Leonardo prompt for a BACKGROUND or HERO IMAGE that visually complements the slide.
 
@@ -541,18 +586,14 @@ STEP 1 — Read the slide carefully. Extract: key themes, any numbers or scale (
 
 STEP 2 — Translate the FEELING into an image. Ask: what does this data feel like? A stat about 1 billion people feels like a vast crowd. A contrast between two forces feels like two textures colliding. A big announcement feels like a stage in darkness. Find the emotion — not the diagram.
 
-THE GOLDEN RULE (applies to ALL styles including Infographic):
-The image captures the FEELING of the data — never a diagram of it.
-A slide about scale → image that feels vast.
-A slide about contrast → two opposing textures or tones.
-A slide about growth → something reaching, expanding organically.
+THE GOLDEN RULE: The image captures the FEELING of the data — never a diagram of it.
 NEVER map the slide's data into shapes, nodes, bars, or literal symbols.
 
 HARD RULES:
-- NEVER recreate the slide as an image — no literal mapping of data into visuals
+- NEVER recreate the slide as an image
 - NEVER write in sentences — comma-separated descriptors only
-- NEVER use: presentation, corporate, slide, ripple, sunburst, expanding
-- Match the slide's colour palette (teal/purple gradient → cool blue-violet tones)
+- NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic
+- Match the slide's colour palette
 - Length: 40–70 words maximum
 - End with: style, lighting, camera/medium
 - Return ONLY the raw prompt — zero explanation, zero preamble
@@ -560,18 +601,18 @@ HARD RULES:
 Style selected: "${promptStyle}"
 Model: ${modelId} (excels at ${styleHint})
 
-GOOD EXAMPLE (scale/contrast slide, Photography style):
-"aerial view of vast crowd splitting into two distinct rivers of people, warm amber left, cool blue right, golden hour, drone shot, shallow depth of field, sony 24mm, cinematic photography, 8K"
+GOOD EXAMPLE:
+"aerial view of vast crowd splitting into two distinct rivers of people, warm amber left, cool blue right, golden hour, drone shot, shallow depth of field, sony 24mm, cinematic photography, 8K"`;
 
-BAD EXAMPLE (never do this — literal data mapping):
-"network of warm nodes representing creative workers and cool blue nodes for tech developers, interconnected lines, overlap zone in center..."`;
-
-  const user = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nWhat is the core FEELING of this slide — scale, contrast, tension, momentum, human mass? Translate that feeling into a Leonardo image prompt. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
+  const standardUser = slideText.trim()
+    ? `Slide text:\n"${slideText.trim()}"\n\nWhat is the core FEELING — scale, contrast, tension, momentum? Translate into a Leonardo image prompt. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
     : `No slide text. Write a powerful, dark-toned Leonardo prompt for a professional presentation background. Comma-separated descriptors only. 40–70 words.`;
 
+  const system = isInfographic ? infographicSystem : standardSystem;
+  const user   = isInfographic ? infographicUser   : standardUser;
+
   try {
-    const prompt = await geminiGenerate(system, user);
+    const prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 512);
     if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
     console.log(`✓ Spark Prompt generated (${prompt.length} chars, model: ${modelId})`);
     return res.json({ prompt });
@@ -582,7 +623,7 @@ BAD EXAMPLE (never do this — literal data mapping):
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-21", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-22", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
