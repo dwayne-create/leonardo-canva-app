@@ -532,11 +532,14 @@ async function geminiGenerate(systemText, userText, maxTokens = 1024) {
     throw new Error(err.error?.message || `Gemini error ${res.status}`);
   }
   const data = await res.json();
-  // Collect all text parts (thinking tokens arrive as separate parts — skip them, take only the final text)
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  const raw = parts.map(p => p.text || "").join("").trim();
+  // Filter out thinking parts (thought: true) — only take actual output text.
+  // Joining all parts without filtering causes the step4Match regex to fire on Gemini's
+  // internal reasoning ("STEP 4" appears in the thinking), returning thinking text instead of output.
+  const allParts = data.candidates?.[0]?.content?.parts || [];
+  const outputParts = allParts.filter(p => !p.thought);
+  const raw = outputParts.map(p => p.text || "").join("").trim();
 
-  // Fallback parser: if steps leaked into the output, extract just the Step 4 content
+  // Fallback parser: if step labels leaked into the actual output, extract just the Step 4 content
   let result = raw;
   const step4Match = raw.match(/STEP\s*4[^:\n]*[:\-]+\s*([\s\S]+)/i);
   if (step4Match) result = step4Match[1].trim();
@@ -706,7 +709,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-34", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-35", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
