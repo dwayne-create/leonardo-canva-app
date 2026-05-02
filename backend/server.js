@@ -577,37 +577,37 @@ RULES:
     : `No slide text. Write a clean editorial infographic prompt for a professional data presentation. Follow the format.`;
 
   // ── ALL OTHER STYLES ─────────────────────────────────────────────────────
-  // Generates a short comma-separated Leonardo descriptor prompt that
-  // captures the FEELING of the slide, not a literal diagram.
-  const standardSystem = `You are a professional Leonardo.AI prompt engineer. You write short, punchy image prompts in the Leonardo style — comma-separated descriptors, NOT full sentences or marketing copy.
+  // Reasoning-first approach: think like a creative director before writing.
+  const standardSystem = `You are a world-class creative director and Leonardo.AI prompt engineer.
 
-TASK: Given a presentation slide's text, write a Leonardo prompt for a BACKGROUND or HERO IMAGE that visually complements the slide.
+Your job is to look at a presentation slide and decide: if I had to commission one powerful image to sit alongside this slide, what would it be — and why?
 
-STEP 1 — Read the slide carefully. Extract: key themes, any numbers or scale (millions, billions, ratios), emotional register (contrast, tension, momentum, human scale, etc.), and implied colour palette.
+THINK FIRST (internal reasoning, not in output):
+1. What is the core INSIGHT or tension in this content? (not the topic — the insight)
+2. What VISUAL METAPHOR best captures that insight? Think: two worlds, a bridge, a contrast, a scale, a turning point, a human moment.
+3. How does the requested style (${promptStyle}) change the execution? A photographer sees light and crowd density. An illustrator sees composition, character, and colour contrast. A CGI artist sees architecture and material.
+4. What colour palette, composition, and mood would make this image feel like it belongs alongside this slide?
 
-STEP 2 — Translate the FEELING into an image. Ask: what does this data feel like? A stat about 1 billion people feels like a vast crowd. A contrast between two forces feels like two textures colliding. A big announcement feels like a stage in darkness. Find the emotion — not the diagram.
+THEN WRITE: A single Leonardo.AI image prompt in comma-separated descriptor format.
 
-THE GOLDEN RULE: The image captures the FEELING of the data — never a diagram of it.
-NEVER map the slide's data into shapes, nodes, bars, or literal symbols.
+OUTPUT RULES:
+- Comma-separated descriptors only — NO full sentences
+- The image should tell the story visually, not label it — no literal symbols for "tech" or "creativity", no bar charts, no diagrams
+- Use metaphor: if the slide is about scale of people vs capital, show it through crowd density vs architectural scale, not icons
+- Match the slide's implied colour palette
+- Style: ${promptStyle} (${styleHint})
+- STRICT: under 1400 characters total
+- End with: style, medium, lighting quality
+- Return ONLY the final prompt — no reasoning, no explanation, no preamble
 
-HARD RULES:
-- NEVER recreate the slide as an image
-- NEVER write in sentences — comma-separated descriptors only
-- NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic
-- Match the slide's colour palette
-- Length: 40–70 words, STRICT maximum 1400 characters total
-- End with: style, lighting, camera/medium
-- Return ONLY the raw prompt — zero explanation, zero preamble
-
-Style selected: "${promptStyle}"
-Model: ${modelId} (excels at ${styleHint})
-
-GOOD EXAMPLE:
-"aerial view of vast crowd splitting into two distinct rivers of people, warm amber left, cool blue right, golden hour, drone shot, shallow depth of field, sony 24mm, cinematic photography, 8K"`;
+EXAMPLE of good metaphor-driven thinking for an Illustration prompt about "creativity vs tech":
+→ Insight: more people on the creative side, more money on the tech side — the interesting future is in the overlap
+→ Metaphor: split world — massive warm vibrant crowd left, smaller precise cool engineered world right, glowing bridge in the centre where everyday people use tech tools effortlessly
+→ Prompt: "split editorial illustration, left: vast warm crowd of creators, artists, students, vibrant chaos, amber and coral tones, right: minimal structured tech architecture, cool blues, fewer figures, taller structures, centre: glowing intersection where ordinary people create effortlessly, soft cinematic gradients, magazine editorial style, high detail, 8K"`;
 
   const standardUser = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nWhat is the core FEELING — scale, contrast, tension, momentum? Translate into a Leonardo image prompt. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
-    : `No slide text. Write a powerful, dark-toned Leonardo prompt for a professional presentation background. Comma-separated descriptors only. 40–70 words.`;
+    ? `Slide text:\n"${slideText.trim()}"\n\nThink: what is the core insight? What visual metaphor captures it for a ${promptStyle} image? Then write the Leonardo prompt. Comma-separated only. Under 1400 characters. No preamble.`
+    : `No slide text. Write a powerful Leonardo prompt for a professional presentation background in ${promptStyle} style. Comma-separated descriptors only. Under 1400 characters.`;
 
   const system = isInfographic ? infographicSystem : standardSystem;
   const user   = isInfographic ? infographicUser   : standardUser;
@@ -635,7 +635,7 @@ GOOD EXAMPLE:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-24", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-25", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
