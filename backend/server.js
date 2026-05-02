@@ -533,24 +533,26 @@ app.post("/api/magic-prompt", async (req, res) => {
   const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
 
-  const isInfographic = promptStyle === "Infographic";
-
   const system = `You are a professional Leonardo.AI prompt engineer. You write short, punchy image prompts in the Leonardo style — comma-separated descriptors, NOT full sentences or marketing copy.
 
 TASK: Given a presentation slide's text, write a Leonardo prompt for a BACKGROUND or HERO IMAGE that visually complements the slide.
 
-STEP 1 — Read the slide carefully. Note: the key themes, any numbers or scale (millions, billions, ratios), and the emotional register (bold contrast, human scale, tension between two forces, etc.).
+STEP 1 — Read the slide carefully. Extract: key themes, any numbers or scale (millions, billions, ratios), emotional register (contrast, tension, momentum, human scale, etc.), and implied colour palette.
 
-STEP 2 — Choose a complementary image that captures the FEELING of that data or story — NOT a diagram of it. The image should make a viewer feel the scale, contrast, or tension — without labelling anything.
-${isInfographic ? `
-FOR INFOGRAPHIC STYLE: Use the visual language of editorial data design — split compositions, typographic texture, geometric contrast, micro-detail. Do NOT map the slide's specific data into shapes/nodes/colours. Capture the AESTHETIC of data, not a diagram of this data.
-` : ""}
+STEP 2 — Translate the FEELING into an image. Ask: what does this data feel like? A stat about 1 billion people feels like a vast crowd. A contrast between two forces feels like two textures colliding. A big announcement feels like a stage in darkness. Find the emotion — not the diagram.
+
+THE GOLDEN RULE (applies to ALL styles including Infographic):
+The image captures the FEELING of the data — never a diagram of it.
+A slide about scale → image that feels vast.
+A slide about contrast → two opposing textures or tones.
+A slide about growth → something reaching, expanding organically.
+NEVER map the slide's data into shapes, nodes, bars, or literal symbols.
+
 HARD RULES:
-- NEVER use the words: presentation, corporate, slide, ripple, sunburst, expanding${isInfographic ? "" : ", infographic"}
-- NEVER recreate the slide as an image (no nodes-for-creative, no circles-for-tech, no literal mapping)
+- NEVER recreate the slide as an image — no literal mapping of data into visuals
 - NEVER write in sentences — comma-separated descriptors only
-- If the slide has numbers or scale (millions, billions), let that sense of MASS or CONTRAST inspire the image — a vast crowd, a lone figure against a huge sky, two contrasting textures
-- Match the slide's colour palette (teal/purple gradient slide → cool blue-violet tones)
+- NEVER use: presentation, corporate, slide, ripple, sunburst, expanding
+- Match the slide's colour palette (teal/purple gradient → cool blue-violet tones)
 - Length: 40–70 words maximum
 - End with: style, lighting, camera/medium
 - Return ONLY the raw prompt — zero explanation, zero preamble
@@ -558,14 +560,14 @@ HARD RULES:
 Style selected: "${promptStyle}"
 Model: ${modelId} (excels at ${styleHint})
 
-GOOD EXAMPLE (Photography, scale/contrast slide):
+GOOD EXAMPLE (scale/contrast slide, Photography style):
 "aerial view of vast crowd splitting into two distinct rivers of people, warm amber left, cool blue right, golden hour, drone shot, shallow depth of field, sony 24mm, cinematic photography, 8K"
 
-BAD EXAMPLE (never do this):
-"network of warm nodes representing creative workers and cool blue nodes for tech developers, interconnected lines, overlap zone in center, infographic background..."`;
+BAD EXAMPLE (never do this — literal data mapping):
+"network of warm nodes representing creative workers and cool blue nodes for tech developers, interconnected lines, overlap zone in center..."`;
 
   const user = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nRead the numbers and themes. What is the core visual FEELING — scale, contrast, tension, momentum? Write a Leonardo prompt that captures that feeling as an image. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
+    ? `Slide text:\n"${slideText.trim()}"\n\nWhat is the core FEELING of this slide — scale, contrast, tension, momentum, human mass? Translate that feeling into a Leonardo image prompt. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
     : `No slide text. Write a powerful, dark-toned Leonardo prompt for a professional presentation background. Comma-separated descriptors only. 40–70 words.`;
 
   try {
@@ -580,7 +582,7 @@ BAD EXAMPLE (never do this):
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-20", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-21", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
