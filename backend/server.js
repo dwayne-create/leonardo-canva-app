@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import Anthropic from "@anthropic-ai/sdk";
+// import Anthropic from "@anthropic-ai/sdk"; // swap back when ANTHROPIC_API_KEY is available
 
 // Load .env from parent directory
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -16,10 +16,10 @@ const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const LEONARDO_BASE    = "https://cloud.leonardo.ai/api/rest/v1";
 const LEONARDO_V2_BASE = "https://cloud.leonardo.ai/api/rest/v2";
 
-// Anthropic client for Spark Prompt — optional, only if ANTHROPIC_API_KEY is set
-const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null;
+// Anthropic client placeholder — swap back in when ANTHROPIC_API_KEY is available
+// const anthropic = process.env.ANTHROPIC_API_KEY
+//   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+//   : null;
 
 // Helper: resolve the API key to use — user-supplied key takes priority
 function resolveKey(req) {
@@ -485,8 +485,11 @@ app.get("/api/models", async (_req, res) => {
 });
 
 // ─── POST /api/magic-prompt ──────────────────────────────────────────────────
-// Reads slide text from the Canva app, calls Claude to generate a Leonardo
-// image prompt tailored to the selected model. Requires ANTHROPIC_API_KEY.
+// Reads slide text from the Canva app, calls Gemini Flash to generate a
+// Leonardo image prompt tailored to the selected model.
+// Requires GEMINI_API_KEY env var.
+// To swap to Anthropic later: replace the geminiGenerate() call with the
+// Anthropic SDK call (see commented block below) and set ANTHROPIC_API_KEY.
 const MODEL_STYLE_HINTS = {
   "gpt-image-2":    "photorealistic photography with rich detail and precise lighting",
   "gemini-image-2": "vibrant, painterly illustration with expressive color",
@@ -494,10 +497,32 @@ const MODEL_STYLE_HINTS = {
   "flux-2-pro":     "crisp, high-fidelity professional imagery",
 };
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+async function geminiGenerate(systemText, userText) {
+  const body = {
+    system_instruction: { parts: [{ text: systemText }] },
+    contents: [{ role: "user", parts: [{ text: userText }] }],
+    generationConfig: { maxOutputTokens: 300, temperature: 0.9 },
+  };
+  const res = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Gemini error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+}
+
 app.post("/api/magic-prompt", async (req, res) => {
-  if (!anthropic) {
+  if (!GEMINI_API_KEY) {
     return res.status(503).json({
-      message: "Spark Prompt requires ANTHROPIC_API_KEY — add it to your Render environment variables.",
+      message: "Spark Prompt requires GEMINI_API_KEY — add it to your Render environment variables.",
     });
   }
 
@@ -517,19 +542,11 @@ Rules:
     : `The current slide has no text. Write a polished, versatile Leonardo image prompt suitable for a professional presentation background.`;
 
   try {
-    const message = await anthropic.messages.create({
-      model:      "claude-haiku-4-5-20251001",
-      max_tokens: 300,
-      system,
-      messages: [{ role: "user", content: user }],
-    });
-
-    const prompt = message.content[0]?.text?.trim() || "";
-    if (!prompt) return res.status(500).json({ message: "No prompt returned by Claude" });
-
+    const prompt = await geminiGenerate(system, user);
+    if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
     console.log(`✓ Spark Prompt generated (${prompt.length} chars, model: ${modelId})`);
     return res.json({ prompt });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Spark Prompt error:", err.message);
     return res.status(500).json({ message: err.message });
   }
