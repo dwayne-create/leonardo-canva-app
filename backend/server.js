@@ -577,37 +577,50 @@ RULES:
     : `No slide text. Write a clean editorial infographic prompt for a professional data presentation. Follow the format.`;
 
   // ── ALL OTHER STYLES ─────────────────────────────────────────────────────
-  // Reasoning-first approach: think like a creative director before writing.
+  // Reasoning-first, style-as-lens approach.
+  const STYLE_LENS = {
+    "Photography":          "Think like a photographer: what is the decisive moment, the real-world scene, the lens choice, the natural light quality that captures this truth? Photography earns its power from authenticity — a real crowd, a real place, a real texture. Exploit: depth of field, golden hour, aerial perspective, human faces, tactile surfaces.",
+    "Illustration":         "Think like an editorial illustrator: what composition, character design, and colour symbolism tells this story at a glance? Illustration can show things that don't exist — metaphorical split worlds, impossible scale, symbolic bridges. Exploit: visual narrative, expressive characters, bold colour contrast, flat vs detailed zones, graphic storytelling.",
+    "Fine Art":             "Think like a painter: what painterly tradition or technique amplifies this message? Oil, watercolour, impasto, classical composition? Fine art can carry weight and gravitas that photography can't. Exploit: brushwork texture, chiaroscuro, classical figure composition, symbolic colour, art historical references.",
+    "3D / CGI":             "Think like a 3D artist: what impossible architecture, material, or environment could only exist in CGI? 3D owns precision, impossible scale, perfect lighting control, and surreal materials. Exploit: glass and chrome, impossible structures, god-rays, photorealistic render of things that can't be photographed, macro impossible detail.",
+    "Cinematic / Film":     "Think like a cinematographer: what shot, grade, and atmosphere would a director choose for this story beat? Cinema controls time and emotion through composition and colour grade. Exploit: anamorphic lens flare, teal-orange grade, rack focus, wide establishing shots, dramatic silhouette, atmosphere and haze.",
+    "Abstract":             "Think like an abstract artist: what shapes, textures, and colour relationships express the pure EMOTION of this content without any literal representation? Abstract is pure feeling — tension, scale, contrast, energy. Exploit: colour field contrast, gestural mark-making, texture collision, negative space, visual weight and balance.",
+    "Stylized / Aesthetic": "Think like a visual trend curator: what aesthetic movement or mood board captures the cultural feel of this content? Exploit: dreamlike soft tones, nostalgic grain, Y2K chrome, cottagecore, vaporwave, brutalism — whatever fits the emotional register of the slide.",
+    "Experimental":         "Think like a boundary-breaker: what unexpected combination of mediums, styles, or concepts would make this image stop someone mid-scroll? Exploit: double exposure, glitch, mixed media collage, impossible scale juxtaposition, surreal rule-breaking.",
+    "Graphic Design":       "Think like a graphic designer: what bold typographic, grid-based, or poster design language communicates this message with maximum clarity and impact? Exploit: negative space, strong geometry, limited palette, Swiss grid, bold contrast, design system thinking.",
+    "Technical":            "Think like a technical illustrator: what diagram, cross-section, blueprint, or schematic captures the precision and complexity of this subject? Exploit: clean linework, annotation style, exploded views, engineering diagram aesthetic, precise detail.",
+  };
+
+  const styleLens = STYLE_LENS[promptStyle] || `Think like a ${promptStyle} artist: what unique capability of this medium best captures the insight in this content?`;
+
   const standardSystem = `You are a world-class creative director and Leonardo.AI prompt engineer.
 
-Your job is to look at a presentation slide and decide: if I had to commission one powerful image to sit alongside this slide, what would it be — and why?
+Your job: look at a presentation slide, find the core insight, then use the specific strengths of the requested style to create the most powerful possible image.
 
-THINK FIRST (internal reasoning, not in output):
-1. What is the core INSIGHT or tension in this content? (not the topic — the insight)
-2. What VISUAL METAPHOR best captures that insight? Think: two worlds, a bridge, a contrast, a scale, a turning point, a human moment.
-3. How does the requested style (${promptStyle}) change the execution? A photographer sees light and crowd density. An illustrator sees composition, character, and colour contrast. A CGI artist sees architecture and material.
-4. What colour palette, composition, and mood would make this image feel like it belongs alongside this slide?
+STEP 1 — FIND THE INSIGHT (think, don't output):
+What is the real tension or story here? Not the topic — the insight. The thing that makes this slide interesting.
 
-THEN WRITE: A single Leonardo.AI image prompt in comma-separated descriptor format.
+STEP 2 — APPLY THE STYLE LENS (think, don't output):
+You are working in: ${promptStyle}
+${styleLens}
+Ask: what can ${promptStyle} do here that NO OTHER STYLE could do as well? That's your angle.
 
-OUTPUT RULES:
-- Comma-separated descriptors only — NO full sentences
-- The image should tell the story visually, not label it — no literal symbols for "tech" or "creativity", no bar charts, no diagrams
-- Use metaphor: if the slide is about scale of people vs capital, show it through crowd density vs architectural scale, not icons
+STEP 3 — BUILD THE VISUAL METAPHOR (think, don't output):
+What scene, composition, or concept embodies the insight through this style's unique strengths? Avoid literal — use metaphor, scale, contrast, atmosphere.
+
+STEP 4 — WRITE THE PROMPT (this is your output):
+Comma-separated Leonardo descriptors. No sentences. No explanation. Under 1400 characters.
+End with: style/medium, lighting quality, render/camera spec.
+
+RULES:
+- No bar charts, diagrams, literal symbols, or labels
+- No sentences — descriptors only
 - Match the slide's implied colour palette
-- Style: ${promptStyle} (${styleHint})
-- STRICT: under 1400 characters total
-- End with: style, medium, lighting quality
-- Return ONLY the final prompt — no reasoning, no explanation, no preamble
-
-EXAMPLE of good metaphor-driven thinking for an Illustration prompt about "creativity vs tech":
-→ Insight: more people on the creative side, more money on the tech side — the interesting future is in the overlap
-→ Metaphor: split world — massive warm vibrant crowd left, smaller precise cool engineered world right, glowing bridge in the centre where everyday people use tech tools effortlessly
-→ Prompt: "split editorial illustration, left: vast warm crowd of creators, artists, students, vibrant chaos, amber and coral tones, right: minimal structured tech architecture, cool blues, fewer figures, taller structures, centre: glowing intersection where ordinary people create effortlessly, soft cinematic gradients, magazine editorial style, high detail, 8K"`;
+- Return ONLY the final prompt`;
 
   const standardUser = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nThink: what is the core insight? What visual metaphor captures it for a ${promptStyle} image? Then write the Leonardo prompt. Comma-separated only. Under 1400 characters. No preamble.`
-    : `No slide text. Write a powerful Leonardo prompt for a professional presentation background in ${promptStyle} style. Comma-separated descriptors only. Under 1400 characters.`;
+    ? `Slide text:\n"${slideText.trim()}"\n\nFind the insight. Apply the ${promptStyle} lens. Build the metaphor. Write the Leonardo prompt. Comma-separated only. Under 1400 characters. Output the prompt only — no reasoning.`
+    : `No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. Comma-separated descriptors only. Under 1400 characters.`;
 
   const system = isInfographic ? infographicSystem : standardSystem;
   const user   = isInfographic ? infographicUser   : standardUser;
@@ -635,7 +648,7 @@ EXAMPLE of good metaphor-driven thinking for an Illustration prompt about "creat
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-25", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-26", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
