@@ -566,7 +566,6 @@ app.post("/api/magic-prompt", async (req, res) => {
   }
 
   const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography", slideImage = null } = req.body;
-  const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
   const hasSlideImage = typeof slideImage === "string" && slideImage.length > 0;
   console.log(`  Spark Prompt: style=${promptStyle}, slideImage=${hasSlideImage}, slideText="${slideText.slice(0, 60)}..."`);
 
