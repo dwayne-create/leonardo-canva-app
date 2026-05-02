@@ -617,48 +617,63 @@ body {
   margin-top: 2px;
 }
 
-/* Style selector pills */
-.style-scroll {
-  display: flex;
-  gap: 5px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
+/* Style picker modal */
+.style-modal {
+  max-width: 300px;
+  width: 100%;
+  padding: 20px;
+  max-height: 88vh;
+  overflow-y: auto;
 }
 
-.style-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.style-pill {
-  padding: 4px 10px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  color: #6b7280;
+.style-modal-sub {
   font-size: 11px;
-  font-weight: 500;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 4px 0 14px;
+}
+
+.style-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.style-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 12px 8px;
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
   transition: all 0.15s;
+  text-align: center;
 }
 
-.style-pill:hover:not(:disabled) {
+.style-card:hover {
   border-color: #6E60EE;
-  color: #6E60EE;
+  background: rgba(110,96,238,0.04);
 }
 
-.style-pill.active {
-  background: #6E60EE;
+.style-card.active {
   border-color: #6E60EE;
-  color: white;
+  background: rgba(110,96,238,0.08);
+}
+
+.style-card-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.style-card-label {
+  font-size: 11px;
   font-weight: 600;
-}
-
-.style-pill:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  color: #374151;
+  line-height: 1.3;
 }
 
 /* Spark Prompt button + header row */

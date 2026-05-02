@@ -183,9 +183,10 @@ export function App() {
   const [showMagicLayers, setShowMagicLayers] = useState(false);
 
   // Spark Prompt state
-  const [sparkLoading, setSparkLoading]     = useState(false);
-  const [sparkError,   setSparkError]       = useState<string | null>(null);
-  const [promptStyle,  setPromptStyle]      = useState("Photography");
+  const [sparkLoading,    setSparkLoading]    = useState(false);
+  const [sparkError,      setSparkError]      = useState<string | null>(null);
+  const [promptStyle,     setPromptStyle]     = useState("Photography");
+  const [showStyleModal,  setShowStyleModal]  = useState(false);
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -379,13 +380,19 @@ export function App() {
   };
 
   // ── Spark Prompt ─────────────────────────────────────────────────────────────
-  // Reads text from the current Canva slide via the Content Querying API,
-  // sends it to the backend which calls Claude to generate a Leonardo prompt.
-  const handleSparkPrompt = useCallback(async () => {
+  // Step 1: clicking the button opens the style picker modal
+  // Step 2: confirming in the modal fires the actual generation
+  const handleSparkPrompt = useCallback(() => {
+    setSparkError(null);
+    setShowStyleModal(true);
+  }, []);
+
+  const handleSparkGenerate = useCallback(async () => {
+    setShowStyleModal(false);
     setSparkLoading(true);
     setSparkError(null);
 
-    // Step 1 — read richtext content from the current page
+    // Read richtext content from the current page
     let slideText = "";
     try {
       await editContent(
@@ -403,7 +410,7 @@ export function App() {
       // Content querying unavailable — proceed without slide text
     }
 
-    // Step 2 — call backend /api/magic-prompt
+    // Call backend /api/magic-prompt
     try {
       const res = await fetch(`${BACKEND_URL}/api/magic-prompt`, {
         method: "POST",
@@ -416,12 +423,12 @@ export function App() {
         return;
       }
       if (data.prompt) setPrompt(data.prompt);
-    } catch (err: any) {
+    } catch {
       setSparkError("Network error — is Render running?");
     } finally {
       setSparkLoading(false);
     }
-  }, [buildHeaders, modelId]);
+  }, [buildHeaders, modelId, promptStyle]);
 
   // When model changes, trim refs, snap dimensions, and cap count
   const handleModelChange = useCallback((newId: string) => {
@@ -785,6 +792,45 @@ export function App() {
         </div>
       )}
 
+      {/* Style picker modal — opens when user clicks Spark Prompt */}
+      {showStyleModal && (
+        <div className="modal-overlay" onClick={() => setShowStyleModal(false)}>
+          <div className="modal style-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">Select your style of image</div>
+            <p className="style-modal-sub">Spark Prompt will write a prompt in this visual style based on your slide.</p>
+            <div className="style-modal-grid">
+              {[
+                { label: "Photography",           icon: "📷" },
+                { label: "Illustration",          icon: "🎨" },
+                { label: "Fine Art",              icon: "🖼" },
+                { label: "Graphic Design",        icon: "✏️" },
+                { label: "3D / CGI",              icon: "🧊" },
+                { label: "Cinematic / Film",      icon: "🎬" },
+                { label: "Stylized / Aesthetic",  icon: "✨" },
+                { label: "Experimental",          icon: "🔬" },
+                { label: "Technical",             icon: "📐" },
+                { label: "Infographic",           icon: "📊" },
+              ].map(({ label, icon }) => (
+                <button
+                  key={label}
+                  className={`style-card ${promptStyle === label ? "active" : ""}`}
+                  onClick={() => setPromptStyle(label)}
+                >
+                  <span className="style-card-icon">{icon}</span>
+                  <span className="style-card-label">{label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="modal-actions" style={{ marginTop: 16 }}>
+              <button className="modal-cancel" onClick={() => setShowStyleModal(false)}>Cancel</button>
+              <button className="generate-btn" style={{ flex: 1, padding: "10px", fontSize: "13px" }} onClick={handleSparkGenerate}>
+                ✨ Generate Prompt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="header">
         <div className="header-top-row">
@@ -1093,18 +1139,6 @@ export function App() {
           >
             {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}
           </button>
-        </div>
-
-        {/* Style selector — picked up by Spark Prompt */}
-        <div className="style-scroll">
-          {["Photography","Illustration","Fine Art","Graphic Design","3D / CGI","Cinematic / Film","Stylized / Aesthetic","Experimental","Technical","Infographic"].map((s) => (
-            <button
-              key={s}
-              className={`style-pill ${promptStyle === s ? "active" : ""}`}
-              onClick={() => setPromptStyle(s)}
-              disabled={isGenerating}
-            >{s}</button>
-          ))}
         </div>
 
         {sparkError && (
