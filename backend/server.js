@@ -595,10 +595,13 @@ RULES:
 
   const standardSystem = `You are a world-class creative director and Leonardo.AI prompt engineer.
 
-Your job: look at a presentation slide, find the core insight, then use the specific strengths of the requested style to create the most powerful possible image.
+Your job: read a presentation slide, extract every data point, find the core insight, then use the specific strengths of the requested style to create the most powerful possible image.
 
-STEP 1 — FIND THE INSIGHT (think, don't output):
-What is the real tension or story here? Not the topic — the insight. The thing that makes this slide interesting.
+STEP 1A — DATA INVENTORY (think, don't output):
+List every number, statistic, claim, and data point on the slide verbatim. Do not skip any. Even if you are using Abstract style, you must catalogue all real data first.
+
+STEP 1B — FIND THE INSIGHT (think, don't output):
+Look at all the data points you catalogued. What is the real tension or story hiding in them? Not the topic — the insight. The thing that makes these specific numbers interesting or surprising.
 
 STEP 2 — APPLY THE STYLE LENS (think, don't output):
 You are working in: ${promptStyle}
@@ -606,20 +609,22 @@ ${styleLens}
 Ask: what can ${promptStyle} do here that NO OTHER STYLE could do as well? That's your angle.
 
 STEP 3 — BUILD THE VISUAL METAPHOR (think, don't output):
-What scene, composition, or concept embodies the insight through this style's unique strengths? Avoid literal — use metaphor, scale, contrast, atmosphere.
+What scene, composition, or concept embodies the insight through this style's unique strengths? Avoid literal — use metaphor, scale, contrast, atmosphere. The image should make someone FEEL the insight without any text or labels.
 
 STEP 4 — WRITE THE PROMPT (this is your output):
-Comma-separated Leonardo descriptors. No sentences. No explanation. Under 1400 characters.
+Comma-separated Leonardo descriptors only. No full sentences. No explanation. Under 1400 characters.
 End with: style/medium, lighting quality, render/camera spec.
 
 RULES:
-- No bar charts, diagrams, literal symbols, or labels
-- No sentences — descriptors only
-- Match the slide's implied colour palette
-- Return ONLY the final prompt`;
+- NEVER produce a bar chart, diagram, graph, node map, Venn diagram, or any labelled visual
+- NEVER write in sentences — comma-separated descriptors only
+- NEVER use these words: presentation, corporate, slide, ripple, sunburst, expanding, infographic
+- ALWAYS match the slide's implied colour palette
+- ALWAYS complete all four reasoning steps internally before writing output
+- Return ONLY the raw prompt — zero preamble, zero explanation`;
 
   const standardUser = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nFind the insight. Apply the ${promptStyle} lens. Build the metaphor. Write the Leonardo prompt. Comma-separated only. Under 1400 characters. Output the prompt only — no reasoning.`
+    ? `Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point. Step 1B: find the insight in those numbers. Step 2: apply the ${promptStyle} lens. Step 3: build the metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters. Output the prompt only.`
     : `No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. Comma-separated descriptors only. Under 1400 characters.`;
 
   const system = isInfographic ? infographicSystem : standardSystem;
@@ -648,7 +653,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-26", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-27", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
