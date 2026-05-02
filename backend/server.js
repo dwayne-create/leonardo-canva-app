@@ -533,34 +533,39 @@ app.post("/api/magic-prompt", async (req, res) => {
   const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
 
+  const isInfographic = promptStyle === "Infographic";
+
   const system = `You are a professional Leonardo.AI prompt engineer. You write short, punchy image prompts in the Leonardo style — comma-separated descriptors, NOT full sentences or marketing copy.
 
 TASK: Given a presentation slide's text, write a Leonardo prompt for a BACKGROUND or HERO IMAGE that visually complements the slide.
 
-STEP 1 — Infer the slide's visual world: What colour palette does this slide imply? What is the emotional register (bold/corporate, warm/human, dark/dramatic, etc.)?
+STEP 1 — Read the slide carefully. Note: the key themes, any numbers or scale (millions, billions, ratios), and the emotional register (bold contrast, human scale, tension between two forces, etc.).
 
-STEP 2 — Choose a complementary subject: Pick a scene, texture, landscape, or abstract visual that amplifies the slide's FEELING — not one that illustrates its words. Think atmosphere, not diagram.
-
+STEP 2 — Choose a complementary image that captures the FEELING of that data or story — NOT a diagram of it. The image should make a viewer feel the scale, contrast, or tension — without labelling anything.
+${isInfographic ? `
+FOR INFOGRAPHIC STYLE: Use the visual language of editorial data design — split compositions, typographic texture, geometric contrast, micro-detail. Do NOT map the slide's specific data into shapes/nodes/colours. Capture the AESTHETIC of data, not a diagram of this data.
+` : ""}
 HARD RULES:
-- NEVER use the words: data, chart, diagram, presentation, business, corporate, slide, ripple, sunburst, expanding${promptStyle === "Infographic" ? "" : ", infographic"}
-- NEVER write in sentences — use comma-separated descriptors only
-- NEVER describe what's already on the slide
-- Match the inferred colour palette (dark/purple slide → deep indigo tones; warm slide → amber/gold; etc.)
+- NEVER use the words: presentation, corporate, slide, ripple, sunburst, expanding${isInfographic ? "" : ", infographic"}
+- NEVER recreate the slide as an image (no nodes-for-creative, no circles-for-tech, no literal mapping)
+- NEVER write in sentences — comma-separated descriptors only
+- If the slide has numbers or scale (millions, billions), let that sense of MASS or CONTRAST inspire the image — a vast crowd, a lone figure against a huge sky, two contrasting textures
+- Match the slide's colour palette (teal/purple gradient slide → cool blue-violet tones)
 - Length: 40–70 words maximum
-- End with: style, lighting quality, camera/medium (e.g. "shot on 50mm, golden hour, cinematic" or "digital painting, rim lighting, 8K")
+- End with: style, lighting, camera/medium
 - Return ONLY the raw prompt — zero explanation, zero preamble
 
 Style selected: "${promptStyle}"
 Model: ${modelId} (excels at ${styleHint})
 
-GOOD EXAMPLE OUTPUT:
-"lone lighthouse on jagged black cliffs, deep indigo storm sky, bioluminescent ocean waves, low angle wide shot, volumetric fog, moody cinematic photography, sony a7iii 24mm, golden ratio composition, 8K"
+GOOD EXAMPLE (Photography, scale/contrast slide):
+"aerial view of vast crowd splitting into two distinct rivers of people, warm amber left, cool blue right, golden hour, drone shot, shallow depth of field, sony 24mm, cinematic photography, 8K"
 
-BAD EXAMPLE OUTPUT (never do this):
-"A vibrant infographic background with a radiating sunburst representing growth and momentum in fuchsia and orange gradients..."`;
+BAD EXAMPLE (never do this):
+"network of warm nodes representing creative workers and cool blue nodes for tech developers, interconnected lines, overlap zone in center, infographic background..."`;
 
   const user = slideText.trim()
-    ? `Slide text: "${slideText.trim()}"\n\nInfer the colour mood and emotion from this slide. Then write a Leonardo prompt for a complementary image. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
+    ? `Slide text:\n"${slideText.trim()}"\n\nRead the numbers and themes. What is the core visual FEELING — scale, contrast, tension, momentum? Write a Leonardo prompt that captures that feeling as an image. Comma-separated descriptors only. 40–70 words. No sentences. No preamble.`
     : `No slide text. Write a powerful, dark-toned Leonardo prompt for a professional presentation background. Comma-separated descriptors only. 40–70 words.`;
 
   try {
@@ -575,7 +580,7 @@ BAD EXAMPLE OUTPUT (never do this):
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-19", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-20", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
