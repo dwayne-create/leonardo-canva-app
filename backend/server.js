@@ -209,8 +209,7 @@ app.get("/api/generation/:id", async (req, res) => {
 // ─── GET /api/library ────────────────────────────────────────────────────────
 // Returns the authenticated user's recent generation history.
 app.get("/api/library", async (req, res) => {
-  const limit  = Math.min(parseInt(req.query.limit  || "40", 10), 200);
-  const offset = parseInt(req.query.offset || "0", 10);
+  const targetImages = Math.min(parseInt(req.query.limit || "40", 10), 360);
   const apiKey = resolveKey(req);
 
   try {
@@ -225,36 +224,50 @@ app.get("/api/library", async (req, res) => {
       return res.status(500).json({ message: "Could not resolve Leonardo user id" });
     }
 
-    // Step 2: fetch generation history
-    const histRes = await fetch(
-      `${LEONARDO_BASE}/generations/user/${userId}?offset=${offset}&limit=${limit}`,
-      { headers: { Authorization: `Bearer ${apiKey}` } }
-    );
-    const histData = await histRes.json();
-
-    if (!histRes.ok) {
-      return res.status(histRes.status).json({ message: histData?.error || "Leonardo API error" });
-    }
-
-    // Flatten to a simple list of images with metadata
-    const generations = histData?.generations || [];
+    // Step 2: paginate Leonardo (caps at 100 generations per request)
+    // Fetch in batches of 100 until we have enough images or run out of history
+    const BATCH = 100;
     const images = [];
-    for (const gen of generations) {
-      for (const img of gen.generated_images || []) {
-        images.push({
-          id:           img.id,
-          generationId: gen.id,
-          url:          img.url,
-          prompt:       gen.prompt,
-          width:        gen.width,
-          height:       gen.height,
-          modelId:      gen.modelId,
-          createdAt:    gen.createdAt,
-        });
+    let genOffset = 0;
+    let exhausted = false;
+
+    while (images.length < targetImages && !exhausted) {
+      const histRes = await fetch(
+        `${LEONARDO_BASE}/generations/user/${userId}?offset=${genOffset}&limit=${BATCH}`,
+        { headers: { Authorization: `Bearer ${apiKey}` } }
+      );
+      const histData = await histRes.json();
+
+      if (!histRes.ok) {
+        return res.status(histRes.status).json({ message: histData?.error || "Leonardo API error" });
       }
+
+      const generations = histData?.generations || [];
+      if (generations.length === 0) { exhausted = true; break; }
+
+      for (const gen of generations) {
+        for (const img of gen.generated_images || []) {
+          images.push({
+            id:           img.id,
+            generationId: gen.id,
+            url:          img.url,
+            prompt:       gen.prompt,
+            width:        gen.width,
+            height:       gen.height,
+            modelId:      gen.modelId,
+            createdAt:    gen.createdAt,
+          });
+          if (images.length >= targetImages) break;
+        }
+        if (images.length >= targetImages) break;
+      }
+
+      // If Leonardo returned fewer than BATCH, we've hit the end of history
+      if (generations.length < BATCH) { exhausted = true; break; }
+      genOffset += BATCH;
     }
 
-    console.log(`✓ Library: returned ${images.length} images (offset=${offset})`);
+    console.log(`✓ Library: returned ${images.length} images (batches from offset 0..${genOffset})`);
     return res.json({ images, total: images.length });
   } catch (err) {
     console.error("Library error:", err);
@@ -653,7 +666,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-28", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-29", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
