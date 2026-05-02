@@ -836,7 +836,6 @@ export function App() {
 
             <div className="style-modal-grid">
               {[
-                { label: "Canvafy Me",            icon: "💎" },
                 { label: "Photography",           icon: "📷" },
                 { label: "Illustration",          icon: "🎨" },
                 { label: "Magazine Cover",        icon: "📰" },
@@ -847,10 +846,11 @@ export function App() {
                 { label: "Print Ad",              icon: "🖨️" },
                 { label: "Graphic Design",        icon: "✏️" },
                 { label: "Infographic",           icon: "📊" },
+                { label: "Canvafy Me",            icon: "💎" },
               ].map(({ label, icon }) => (
                 <button
                   key={label}
-                  className={`style-card ${promptStyle === label ? "active" : ""}`}
+                  className={`style-card ${promptStyle === label ? "active" : ""} ${label === "Canvafy Me" ? "style-card--wide" : ""}`}
                   onClick={() => setPromptStyle(label)}
                 >
                   <span className="style-card-icon">{icon}</span>
