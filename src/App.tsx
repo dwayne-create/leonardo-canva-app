@@ -185,6 +185,7 @@ export function App() {
   // Spark Prompt state
   const [sparkLoading, setSparkLoading]     = useState(false);
   const [sparkError,   setSparkError]       = useState<string | null>(null);
+  const [promptStyle,  setPromptStyle]      = useState("Photography");
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -407,7 +408,7 @@ export function App() {
       const res = await fetch(`${BACKEND_URL}/api/magic-prompt`, {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ slideText, modelId }),
+        body: JSON.stringify({ slideText, modelId, promptStyle }),
       });
       const data = await res.json() as Record<string, string>;
       if (!res.ok) {
@@ -1093,6 +1094,19 @@ export function App() {
             {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}
           </button>
         </div>
+
+        {/* Style selector — picked up by Spark Prompt */}
+        <div className="style-scroll">
+          {["Photography","Illustration","Fine Art","Graphic Design","3D / CGI","Cinematic / Film","Stylized / Aesthetic","Experimental","Technical","Infographic"].map((s) => (
+            <button
+              key={s}
+              className={`style-pill ${promptStyle === s ? "active" : ""}`}
+              onClick={() => setPromptStyle(s)}
+              disabled={isGenerating}
+            >{s}</button>
+          ))}
+        </div>
+
         {sparkError && (
           <div className="spark-error">{sparkError}</div>
         )}

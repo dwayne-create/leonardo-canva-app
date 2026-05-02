@@ -530,15 +530,18 @@ app.post("/api/magic-prompt", async (req, res) => {
     });
   }
 
-  const { slideText = "", modelId = "gpt-image-2" } = req.body;
+  const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
 
   const system = `You are a creative director specialising in AI image generation prompts for Leonardo.AI. Your output is sent directly to the ${modelId} model, which excels at ${styleHint}.
 
+The user has selected the visual style category: "${promptStyle}". The generated prompt MUST be in this style.
+
 Rules:
 - Write a single descriptive paragraph, 50–120 words
 - Translate abstract ideas into concrete visual details: lighting, composition, colour palette, mood, textures
-- Mention a specific style or medium at the end (e.g. "professional photography, shallow depth of field, golden hour lighting")
+- Reflect the chosen style category clearly (e.g. for Photography: mention camera, lens, lighting; for Illustration: mention medium, linework, palette; for 3D / CGI: mention render engine, materials, lighting setup)
+- Mention the style/medium explicitly at the end of the prompt
 - Do NOT include explanation or preamble — return only the raw image prompt`;
 
   const user = slideText.trim()
@@ -557,7 +560,7 @@ Rules:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-14", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-15", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
