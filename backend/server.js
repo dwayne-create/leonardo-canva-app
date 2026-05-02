@@ -547,12 +547,7 @@ async function geminiGenerate(systemText, userText, maxTokens = 2000, slideImage
   }
   const data = await res.json();
   const parts = data.candidates?.[0]?.content?.parts || [];
-  const raw = parts.map(p => p.text || "").join("").trim();
-
-  // Primary parser: extract everything after "STEP 4" header — that IS the image prompt.
-  // With thinkingBudget:0, the full reasoning chain is in the output and this carves just Step 4.
-  const step4Match = raw.match(/STEP\s*4[^:\n]*[:\-]+\s*([\s\S]+)/i);
-  let result = step4Match ? step4Match[1].trim() : raw;
+  let result = parts.map(p => p.text || "").join("").trim();
 
   // Strip any trailing metadata Gemini appends (word counts, char counts, "Note: ...")
   result = result
@@ -577,123 +572,55 @@ app.post("/api/magic-prompt", async (req, res) => {
 
   const isInfographic = promptStyle === "Infographic";
 
-  // ── INFOGRAPHIC MODE ─────────────────────────────────────────────────────
-  // Generates a detailed structured brief with real data, sections, layout,
-  // and visual style — not a feeling-based prompt.
-  const infographicSystem = `You are an expert infographic designer writing a detailed image generation brief for Leonardo.AI.
-
-TASK: Read the slide text and produce a structured infographic prompt that includes the real data, a clear layout, and precise visual style instructions. This is a FULL BRIEF — not a short descriptor list.
-
-OUTPUT FORMAT — follow this structure exactly:
-
-A premium editorial infographic [topic].
-
-Layout:
-[describe the overall layout — vertical/horizontal, number of sections, hierarchy]
-
-Header:
-"[Main title from the slide]"
-
-[For each key data group, create a numbered Section:]
-Section N — [Section name]:
-- [data point or stat]
-- [data point or stat]
-[Describe how to visualise it — bars, icons, scaling, etc.]
-
-Visual Style:
-[typography style, color palette, design language, icons, grid system, spacing]
-
-Background:
-[white/dark/gradient, feel — magazine, Swiss design, editorial, etc.]
-
-RULES:
-- Extract ALL real numbers and stats from the slide text — include them verbatim
-- Group related data into logical sections (3–6 sections)
-- Be specific about visualisation per section (bar chart, icon row, ratio illustration, etc.)
-- Visual style should feel premium, editorial, and clean
-- STRICT LIMIT: total output must be under 1400 characters — be concise in section descriptions
-- Return ONLY the prompt — no preamble, no explanation`;
-
-  const infographicUser = slideText.trim()
-    ? `Slide text:\n"${slideText.trim()}"\n\nExtract all data points, group into sections, and write the full structured infographic prompt. Follow the format exactly. No preamble.`
-    : `No slide text. Write a clean editorial infographic prompt for a professional data presentation. Follow the format.`;
-
-  // ── ALL OTHER STYLES ─────────────────────────────────────────────────────
-  // Reasoning-first, style-as-lens approach.
-  const STYLE_LENS = {
-    "Photography":          "Think like a photographer: what is the decisive moment, the real-world scene, the lens choice, the natural light quality that captures this truth? Photography earns its power from authenticity — a real crowd, a real place, a real texture. Exploit: depth of field, golden hour, aerial perspective, human faces, tactile surfaces.",
-    "Illustration":         "Think like an editorial illustrator: what single composition, character, or moment tells this story at a glance? The best editorial illustrations are ONE unified scene — not split panels. Find the single image that contains the entire insight: a character, an impossible object, a symbolic act. Exploit: visual narrative, expressive characters, bold colour contrast, impossible scale, graphic storytelling.",
-    "Fine Art":             "Think like a painter: what painterly tradition or technique amplifies this message? Oil, watercolour, impasto, classical composition? Fine art can carry weight and gravitas that photography can't. Exploit: brushwork texture, chiaroscuro, classical figure composition, symbolic colour, art historical references.",
-    "3D / CGI":             "Think like a 3D artist: what impossible architecture, material, or environment could only exist in CGI? 3D owns precision, impossible scale, perfect lighting control, and surreal materials. Exploit: glass and chrome, impossible structures, god-rays, photorealistic render of things that can't be photographed, macro impossible detail.",
-    "Cinematic / Film":     "Think like a cinematographer: what shot, grade, and atmosphere would a director choose for this story beat? Cinema controls time and emotion through composition and colour grade. Exploit: anamorphic lens flare, teal-orange grade, rack focus, wide establishing shots, dramatic silhouette, atmosphere and haze.",
-    "Abstract":             "Think like an abstract artist: what shapes, textures, and colour relationships express the pure EMOTION of this content without any literal representation? Abstract is pure feeling — tension, scale, contrast, energy. Exploit: colour field contrast, gestural mark-making, texture collision, negative space, visual weight and balance.",
-    "Stylized / Aesthetic": "Think like a visual trend curator: what aesthetic movement or mood board captures the cultural feel of this content? Exploit: dreamlike soft tones, nostalgic grain, Y2K chrome, cottagecore, vaporwave, brutalism — whatever fits the emotional register of the slide.",
-    "Experimental":         "Think like a boundary-breaker: what unexpected combination of mediums, styles, or concepts would make this image stop someone mid-scroll? Exploit: double exposure, glitch, mixed media collage, impossible scale juxtaposition, surreal rule-breaking.",
-    "Graphic Design":       "Think like a graphic designer: what bold typographic, grid-based, or poster design language communicates this message with maximum clarity and impact? Exploit: negative space, strong geometry, limited palette, Swiss grid, bold contrast, design system thinking.",
-    "Technical":            "Think like a technical illustrator: what diagram, cross-section, blueprint, or schematic captures the precision and complexity of this subject? Exploit: clean linework, annotation style, exploded views, engineering diagram aesthetic, precise detail.",
+  // ── PER-STYLE HINTS ───────────────────────────────────────────────────────
+  // One-liner per style — tells Gemini what makes this medium visually distinctive.
+  // No rules, no bans. Just the angle.
+  const STYLE_HINT = {
+    "Photography":          "Shoot it: decisive moment, real scene, lens choice, natural light, depth of field, human truth.",
+    "Illustration":         "Draw it: bold editorial scene, expressive characters, graphic storytelling, strong colour contrast.",
+    "Fine Art":             "Paint it: brushwork, chiaroscuro, classical composition, symbolic colour, painterly texture.",
+    "3D / CGI":             "Render it: impossible materials, surreal precision, perfect lighting, things that can't be photographed.",
+    "Cinematic / Film":     "Film it: cinematic shot, colour grade, anamorphic lens, atmosphere, dramatic silhouette.",
+    "Abstract":             "Feel it: pure shapes, colour relationships, gestural marks, negative space, emotional tension.",
+    "Stylized / Aesthetic": "Style it: dreamlike tones, nostalgic grain, aesthetic movement — vaporwave, brutalism, cottagecore.",
+    "Experimental":         "Break it: double exposure, glitch, mixed media, impossible scale, surreal rule-breaking.",
+    "Graphic Design":       "Design it: bold geometry, Swiss grid, limited palette, strong contrast, poster impact.",
+    "Technical":            "Diagram it: cross-section, blueprint, clean linework, annotation style, engineering precision.",
+    "Infographic":          "Map it: all real data, clear layout, sections, icons, editorial style, premium design.",
   };
 
-  const styleLens = STYLE_LENS[promptStyle] || `Think like a ${promptStyle} artist: what unique capability of this medium best captures the insight in this content?`;
+  const styleHint = STYLE_HINT[promptStyle] || `Create a powerful ${promptStyle}-style image.`;
 
+  // ── INFOGRAPHIC SYSTEM ────────────────────────────────────────────────────
+  const infographicSystem = `You are an expert infographic designer and Leonardo.AI prompt engineer.
+
+Read the slide content and write a detailed image generation brief for a premium editorial infographic.
+
+Include: all real numbers and stats verbatim, clear section layout, how each data group is visualised (bars, icons, ratios), colour palette, typography style, background.
+
+Output ONLY the brief — no preamble, no explanation. Under 1400 characters.`;
+
+  const infographicUser = slideText.trim()
+    ? `${hasSlideImage ? "Slide image is attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nWrite the full infographic brief. Include every data point. Output only the brief.`
+    : `${hasSlideImage ? "Slide image is attached above.\n\n" : ""}No slide text. Write a clean editorial infographic brief for a professional data presentation.`;
+
+  // ── STANDARD SYSTEM (all other styles) ───────────────────────────────────
   const standardSystem = `You are a world-class creative director and Leonardo.AI prompt engineer.
 
-Your job: read a presentation slide, extract every data point, find the core insight, then use the specific strengths of the requested style to create the most powerful possible image.
+Read the slide content. Understand the data, insight, and story it tells. Then write the best possible Leonardo.AI image generation prompt for it.
 
-STEP 1A — DATA INVENTORY (think, don't output):
-List every number, statistic, claim, and data point on the slide verbatim. Do not skip any. Even if you are using Abstract style, you must catalogue all real data first.
+Style selected by the user: ${promptStyle}
+${styleHint}
 
-TITLE/BRAND SLIDE RULE: If there are no data points — only a title, brand name, or short headline — then your inventory IS the visual language of the words themselves. Mine each word for its literal iconic meaning:
-- What physical object, natural phenomenon, or symbolic image does this word directly evoke?
-- Example: "PRISM" → glass prism, light entering glass, white light splitting into rainbow spectrum, crystal facets
-- Example: "IGNITE" → flame, spark, combustion, lit match, ignition
-- Example: "FLOW" → water current, fluid dynamics, motion blur, river
-Do this for every word in the title. These become your raw visual material.
+Your prompt must be grounded in what makes ${promptStyle} visually powerful — use what only this style can do.${hasSlideImage ? "\n\nThe user has pasted a screenshot of their slide. Use the actual colours, layout, and visual design you see in the image to inform the prompt." : ""}
 
-STEP 1B — FIND THE INSIGHT (think, don't output):
-For data slides: look at all the data points you catalogued. What is the real tension or story hiding in them?
-For title/brand slides: which word or combination gives the strongest single visual? What moment best captures what this brand/concept IS, not what it talks about.
+If the slide is title-only with no data, mine the literal visual meaning of the words (e.g. "PRISM" → glass prism, light refraction, rainbow spectrum).
 
-STEP 2 — APPLY THE STYLE LENS (think, don't output):
-You are working in: ${promptStyle}
-${styleLens}
-Ask: what can ${promptStyle} do here that NO OTHER STYLE could do as well? That's your angle.
-
-STEP 3 — BUILD THE VISUAL METAPHOR (think, don't output):
-Find ONE unified scene, object, or moment that makes the viewer FEEL the insight — without labels, text, or explanation.
-
-CRITICAL METAPHOR RULES:
-- The metaphor must be a SINGLE unified image — not two halves, not left/right, not split panels
-- If you find yourself thinking "left side... right side..." or "split scene" — STOP. That is literal data mapping disguised as a metaphor. Find a single thing that contains the whole tension inside it
-- Ask: what ONE object, creature, place, or moment already contains both forces of this insight within itself? A prism contains both order and chaos. A wave contains both power and fragility. A seed contains both potential and constraint.
-- The best metaphors are surprising. If it sounds like a diagram or a comparison chart, it is not a metaphor.
-
-STEP 4 — WRITE THE PROMPT (this is your output):
-Write 15–25 comma-separated Leonardo descriptors. Aim for 400–900 characters. No full sentences. No explanation.
-
-The descriptors must come DIRECTLY from your Step 3 metaphor — not from generic style words. Every descriptor should be earned by the reasoning, not borrowed from a style template.
-
-BAD (generic, unearned): "abstract crystalline structures, interconnected geometric planes, clean lines, subtle gradients"
-GOOD (specific, reasoned): "glass optical prism catching direct sunlight, white beam fracturing into violet indigo blue green yellow orange red spectrum bands, prismatic rainbow cast across dark obsidian surface, macro photography, f/2.8 aperture, studio light"
-
-Structure your output in this order:
-1. The central subject / metaphor object (specific, visual, from Step 3)
-2. The action or moment happening (what is it doing / what state is it in)
-3. Environment / surface / context (what surrounds it)
-4. Colour palette (specific hues, not just "vibrant" — name the actual colours)
-5. Lighting (direction, quality, type)
-6. Style / medium / render spec
-
-RULES:
-- NEVER produce a bar chart, diagram, graph, node map, Venn diagram, split panel, or labelled visual
-- NEVER write in sentences — comma-separated descriptors only
-- NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic, "left side", "right side", "split scene"
-- ALWAYS match the slide's implied colour palette
-- ALWAYS complete all four reasoning steps internally before writing output
-- Return ONLY the raw prompt — zero preamble, zero explanation, no word/character count`;
+Output ONLY the prompt — comma-separated descriptors, 400–900 characters, specific real objects and colours, no explanation, no labels.`;
 
   const standardUser = slideText.trim()
-    ? `${hasSlideImage ? "The slide image above shows the actual visual design of the slide.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point (or mine word visual meanings for title-only slides). Step 1B: find the insight. Step 2: apply the ${promptStyle} lens. Step 3: build ONE unified metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters. ${hasSlideImage ? "Match the colour palette and visual design language from the slide image." : ""} Output the prompt only.`
-    : `${hasSlideImage ? "The slide image above shows the actual visual design. " : ""}No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. ${hasSlideImage ? "Match the visual style and colour palette of the slide. " : ""}Comma-separated descriptors only. Under 1400 characters.`;
+    ? `${hasSlideImage ? "Slide image attached above.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nWrite the Leonardo.AI image prompt. Style: ${promptStyle}. Output the prompt only.`
+    : `${hasSlideImage ? "Slide image attached above.\n\n" : ""}No slide text. Write a powerful Leonardo.AI image prompt for a professional presentation background. Style: ${promptStyle}. Output the prompt only.`;
 
   const system = isInfographic ? infographicSystem : standardSystem;
   const user   = isInfographic ? infographicUser   : standardUser;
@@ -701,7 +628,7 @@ RULES:
   const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
 
   try {
-    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 2000, hasSlideImage ? slideImage : null);
+    let prompt = await geminiGenerate(system, user, 2000, hasSlideImage ? slideImage : null);
     if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
 
     // Truncate at last complete sentence/line if over Leonardo's limit
@@ -721,7 +648,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-37", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-38", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
