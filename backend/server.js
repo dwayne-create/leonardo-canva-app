@@ -620,8 +620,16 @@ Your job: read a presentation slide, extract every data point, find the core ins
 STEP 1A — DATA INVENTORY (think, don't output):
 List every number, statistic, claim, and data point on the slide verbatim. Do not skip any. Even if you are using Abstract style, you must catalogue all real data first.
 
+TITLE/BRAND SLIDE RULE: If there are no data points — only a title, brand name, or short headline — then your inventory IS the visual language of the words themselves. Mine each word for its literal iconic meaning:
+- What physical object, natural phenomenon, or symbolic image does this word directly evoke?
+- Example: "PRISM" → glass prism, light entering glass, white light splitting into rainbow spectrum, crystal facets
+- Example: "IGNITE" → flame, spark, combustion, lit match, ignition
+- Example: "FLOW" → water current, fluid dynamics, motion blur, river
+Do this for every word in the title. These become your raw visual material.
+
 STEP 1B — FIND THE INSIGHT (think, don't output):
-Look at all the data points you catalogued. What is the real tension or story hiding in them? Not the topic — the insight. The thing that makes these specific numbers interesting or surprising.
+For data slides: look at all the data points you catalogued. What is the real tension or story hiding in them?
+For title/brand slides: which word or combination gives the strongest single visual? What moment best captures what this brand/concept IS, not what it talks about.
 
 STEP 2 — APPLY THE STYLE LENS (think, don't output):
 You are working in: ${promptStyle}
@@ -679,7 +687,7 @@ RULES:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-32", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-33", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
