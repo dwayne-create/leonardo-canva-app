@@ -107,7 +107,7 @@ interface LibraryImage {
 
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 const API_KEY_STORAGE = "prism_leo_api_key";
-const LIB_PICKER_PAGE_SIZE = 9; // 3×3 grid per page
+const LIB_PICKER_PAGE_SIZE = 18; // 6×3 grid per page
 
 async function insertIntoCanva(url: string, width: number, height: number) {
   const asset = await upload({
@@ -285,7 +285,7 @@ export function App() {
     setLibPickerLoading(true);
     setLibPickerError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/library?limit=60`, { headers: buildHeaders() });
+      const res = await fetch(`${BACKEND_URL}/api/library?limit=120`, { headers: buildHeaders() });
       if (!res.ok) throw new Error("Failed to load library");
       const data = await res.json();
       setLibPickerImages(data.images || []);
