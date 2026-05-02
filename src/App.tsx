@@ -797,7 +797,7 @@ export function App() {
         <div className="modal-overlay" onClick={() => setShowStyleModal(false)}>
           <div className="modal style-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title">Select your style of image</div>
-            <p className="style-modal-sub">Spark Prompt will write a prompt in this visual style based on your slide.</p>
+            <p className="style-modal-sub">Spark Prompt reads your slide text and finds a complementary image — not a literal illustration, but a visual that amplifies the feeling.</p>
             <div className="style-modal-grid">
               {[
                 { label: "Photography",           icon: "📷" },
@@ -1166,7 +1166,7 @@ export function App() {
       <button className="magic-layers-btn" onClick={() => setShowMagicLayers(true)}>
         <span className="ml-btn-text">Create Magic Layers</span>
         <div className="ml-btn-icon">
-          <svg width="36" height="36" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="22" height="22" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* Bottom layer — sky image */}
             <rect x="8" y="22" width="36" height="26" rx="4" fill="#7EC8E3"/>
             <rect x="8" y="22" width="36" height="26" rx="4" fill="url(#sky)"/>

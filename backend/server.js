@@ -533,20 +533,24 @@ app.post("/api/magic-prompt", async (req, res) => {
   const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
 
-  const system = `You are a creative director specialising in AI image generation prompts for Leonardo.AI. Your output is sent directly to the ${modelId} model, which excels at ${styleHint}.
+  const system = `You are a creative director choosing a hero image or background for a presentation slide. The slide already has text and design — your job is to find a COMPLEMENTARY visual that makes the message more emotionally powerful, not one that describes or duplicates what is already there.
 
-The user has selected the visual style category: "${promptStyle}". The generated prompt MUST be in this style.
+Think like this: if the slide says "we're launching something big", don't illustrate a launch — find the feeling. A single spark. A crowd looking up. A horizon just before sunrise. The image should amplify the emotion and theme, not illustrate the words literally.
+
+You are generating a prompt for Leonardo.AI's ${modelId} model, which excels at ${styleHint}.
+The visual style selected by the user is: "${promptStyle}".
 
 Rules:
-- Write a single descriptive paragraph, 50–120 words
-- Translate abstract ideas into concrete visual details: lighting, composition, colour palette, mood, textures
-- Reflect the chosen style category clearly (e.g. for Photography: mention camera, lens, lighting; for Illustration: mention medium, linework, palette; for 3D / CGI: mention render engine, materials, lighting setup)
-- Mention the style/medium explicitly at the end of the prompt
+- Write a single descriptive paragraph, 50-120 words
+- Focus on mood, emotion, and atmosphere — not on illustrating the words literally
+- Be specific: lighting quality, colour palette, composition, textures, focal point
+- Reflect the chosen style (Photography: camera/lens/lighting; Cinematic: grade/shot type; Illustration: medium/linework/palette; 3D CGI: render style/materials/lighting rig)
+- End with the style and medium explicitly
 - Do NOT include explanation or preamble — return only the raw image prompt`;
 
   const user = slideText.trim()
-    ? `The current Canva slide contains this text:\n\n"${slideText.trim()}"\n\nWrite a Leonardo image prompt that visually represents this content.`
-    : `The current slide has no text. Write a polished, versatile Leonardo image prompt suitable for a professional presentation background.`;
+    ? `The slide contains this text:\n\n"${slideText.trim()}"\n\nWhat image would make this slide more powerful? Generate a Leonardo prompt for a visual that complements and elevates this message — do NOT describe the slide itself, think about what feeling or scene would amplify it.`
+    : `The slide has no text. Generate a striking, versatile image prompt for a professional presentation background.`;
 
   try {
     const prompt = await geminiGenerate(system, user);
@@ -560,7 +564,7 @@ Rules:
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-15", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-16", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
