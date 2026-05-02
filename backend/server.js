@@ -512,23 +512,10 @@ const MODEL_STYLE_HINTS = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-// deckImages: optional array of base64-encoded JPEG strings (one per slide)
-async function geminiGenerate(systemText, userText, maxTokens = 1024, deckImages = []) {
-  // Build user parts — prepend deck images if provided
-  const userParts = [];
-  if (deckImages.length > 0) {
-    userParts.push({ text: `Here is the full presentation deck (${deckImages.length} slide${deckImages.length > 1 ? "s" : ""}). Use these to understand the deck's visual language, color palette, and design style:` });
-    for (const b64 of deckImages) {
-      userParts.push({ inline_data: { mime_type: "image/jpeg", data: b64 } });
-    }
-    userParts.push({ text: "\n\n" + userText });
-  } else {
-    userParts.push({ text: userText });
-  }
-
+async function geminiGenerate(systemText, userText, maxTokens = 1024) {
   const body = {
     system_instruction: { parts: [{ text: systemText }] },
-    contents: [{ role: "user", parts: userParts }],
+    contents: [{ role: "user", parts: [{ text: userText }] }],
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.9,
@@ -563,10 +550,8 @@ app.post("/api/magic-prompt", async (req, res) => {
     });
   }
 
-  const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography", deckImages = [] } = req.body;
+  const { slideText = "", modelId = "gpt-image-2", promptStyle = "Photography" } = req.body;
   const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
-  const hasDeckImages = Array.isArray(deckImages) && deckImages.length > 0;
-  console.log(`  Spark Prompt: style=${promptStyle}, deckImages=${deckImages.length}, slideText="${slideText.slice(0, 60)}..."`);
 
   const isInfographic = promptStyle === "Infographic";
 
@@ -668,13 +653,13 @@ RULES:
 - NEVER produce a bar chart, diagram, graph, node map, Venn diagram, split panel, or labelled visual
 - NEVER write in sentences — comma-separated descriptors only
 - NEVER use: presentation, corporate, slide, ripple, sunburst, expanding, infographic, "left side", "right side", "split scene"
-- ALWAYS match the slide's implied colour palette${hasDeckImages ? " — use the actual deck images to identify the exact palette" : ""}
+- ALWAYS match the slide's implied colour palette
 - ALWAYS complete all four reasoning steps internally before writing output
-${hasDeckImages ? "- You have been given the full deck as images — use the visual style, color palette, and design language you observe to ensure the prompt fits the presentation\n" : ""}- Return ONLY the raw prompt — zero preamble, zero explanation`;
+- Return ONLY the raw prompt — zero preamble, zero explanation`;
 
   const standardUser = slideText.trim()
-    ? `${hasDeckImages ? "The deck images above show the full presentation's visual design.\n\n" : ""}Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point (or mine word visual meanings for title-only slides). Step 1B: find the insight. Step 2: apply the ${promptStyle} lens. Step 3: build ONE unified metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters.${hasDeckImages ? " Match the color palette and visual style of the deck." : ""} Output the prompt only.`
-    : `${hasDeckImages ? "The deck images above show the full presentation's visual design.\n\n" : ""}No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. ${hasDeckImages ? "Match the visual style and color palette of the deck. " : ""}Comma-separated descriptors only. Under 1400 characters.`;
+    ? `Slide text:\n"${slideText.trim()}"\n\nStep 1A: inventory every data point. Step 1B: find the insight in those numbers. Step 2: apply the ${promptStyle} lens. Step 3: build the metaphor. Step 4: write the Leonardo prompt — comma-separated descriptors only, under 1400 characters. Output the prompt only.`
+    : `No slide text. Write a powerful Leonardo prompt for a professional presentation background. Style: ${promptStyle}. Comma-separated descriptors only. Under 1400 characters.`;
 
   const system = isInfographic ? infographicSystem : standardSystem;
   const user   = isInfographic ? infographicUser   : standardUser;
@@ -682,7 +667,7 @@ ${hasDeckImages ? "- You have been given the full deck as images — use the vis
   const LEONARDO_PROMPT_LIMIT = 1480; // Leonardo caps at ~1500 chars
 
   try {
-    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 1024, hasDeckImages ? deckImages : []);
+    let prompt = await geminiGenerate(system, user, isInfographic ? 1024 : 512);
     if (!prompt) return res.status(500).json({ message: "No prompt returned by Gemini" });
 
     // Truncate at last complete sentence/line if over Leonardo's limit
@@ -702,7 +687,7 @@ ${hasDeckImages ? "- You have been given the full deck as images — use the vis
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-34", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-33", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);

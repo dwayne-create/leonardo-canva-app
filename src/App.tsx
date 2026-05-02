@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@canva/asset";
-import { addElementAtCursor, addElementAtPoint, editContent, requestExport } from "@canva/design";
+import { addElementAtCursor, addElementAtPoint, editContent } from "@canva/design";
 import "./styles.css";
 
 // ─── V2 model dimension grids ────────────────────────────────────────────────
@@ -387,49 +387,12 @@ export function App() {
     setShowStyleModal(true);
   }, []);
 
-  // Helper: fetch a blob URL and return base64-encoded JPEG data (no data: prefix)
-  const fetchBlobAsBase64 = useCallback(async (url: string): Promise<string | null> => {
-    try {
-      const r = await fetch(url);
-      const blob = await r.blob();
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Strip the "data:image/jpeg;base64," prefix — Gemini wants raw base64
-          resolve(result.split(",")[1] || "");
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
-  }, []);
-
   const handleSparkGenerate = useCallback(async () => {
     setShowStyleModal(false);
     setSparkLoading(true);
     setSparkError(null);
 
-    // ── 1. Export all deck slides as JPGs (Canva shows its export dialog) ──
-    let deckImages: string[] = [];
-    try {
-      const exportResult = await requestExport({
-        acceptedFileTypes: [{ type: "jpg", zipped: "never" }],
-      });
-      if (exportResult.status === "completed") {
-        // Convert each exported blob URL to base64 — cap at 12 slides to stay within Gemini token limits
-        const blobs = exportResult.exportBlobs.slice(0, 12);
-        const base64Results = await Promise.all(blobs.map((b) => fetchBlobAsBase64(b.url)));
-        deckImages = base64Results.filter((b): b is string => b !== null && b.length > 0);
-      }
-      // If aborted, deckImages stays empty — we proceed text-only
-    } catch {
-      // requestExport unavailable in this context — proceed text-only
-    }
-
-    // ── 2. Read richtext from the current page ──
+    // Read richtext content from the current page
     let slideText = "";
     try {
       await editContent(
@@ -447,12 +410,12 @@ export function App() {
       // Content querying unavailable — proceed without slide text
     }
 
-    // ── 3. Call backend /api/magic-prompt ──
+    // Call backend /api/magic-prompt
     try {
       const res = await fetch(`${BACKEND_URL}/api/magic-prompt`, {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ slideText, modelId, promptStyle, deckImages }),
+        body: JSON.stringify({ slideText, modelId, promptStyle }),
       });
       const data = await res.json() as Record<string, string>;
       if (!res.ok) {
@@ -465,7 +428,7 @@ export function App() {
     } finally {
       setSparkLoading(false);
     }
-  }, [buildHeaders, fetchBlobAsBase64, modelId, promptStyle]);
+  }, [buildHeaders, modelId, promptStyle]);
 
   // When model changes, trim refs, snap dimensions, and cap count
   const handleModelChange = useCallback((newId: string) => {
