@@ -617,6 +617,59 @@ body {
   margin-top: 2px;
 }
 
+/* Spark Prompt button + header row */
+.prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spark-btn {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(110,96,238,0.08), rgba(85,72,217,0.08));
+  border: 1px solid rgba(110,96,238,0.3);
+  border-radius: 20px;
+  color: #6E60EE;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  letter-spacing: 0.1px;
+}
+
+.spark-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(110,96,238,0.15), rgba(85,72,217,0.15));
+  border-color: #6E60EE;
+  box-shadow: 0 0 8px rgba(110,96,238,0.2);
+}
+
+.spark-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spark-btn-loading {
+  opacity: 0.7;
+  cursor: wait;
+  animation: spark-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes spark-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1;   }
+}
+
+.spark-error {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 3px solid #f97316;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #c2410c;
+}
+
 /* Prompt */
 .prompt-textarea {
   width: 100%;

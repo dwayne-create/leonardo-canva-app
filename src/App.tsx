@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@canva/asset";
-import { addElementAtCursor, addElementAtPoint } from "@canva/design";
+import { addElementAtCursor, addElementAtPoint, editContent } from "@canva/design";
 import "./styles.css";
 
 // ─── V2 model dimension grids ────────────────────────────────────────────────
@@ -178,6 +178,10 @@ export function App() {
 
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
+
+  // Spark Prompt state
+  const [sparkLoading, setSparkLoading]     = useState(false);
+  const [sparkError,   setSparkError]       = useState<string | null>(null);
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -369,6 +373,51 @@ export function App() {
       setKeyTestLoading(false);
     }
   };
+
+  // ── Spark Prompt ─────────────────────────────────────────────────────────────
+  // Reads text from the current Canva slide via the Content Querying API,
+  // sends it to the backend which calls Claude to generate a Leonardo prompt.
+  const handleSparkPrompt = useCallback(async () => {
+    setSparkLoading(true);
+    setSparkError(null);
+
+    // Step 1 — read richtext content from the current page
+    let slideText = "";
+    try {
+      await editContent(
+        { contentType: "richtext", target: "current_page" },
+        async (session) => {
+          const parts: string[] = [];
+          for (const range of session.contents) {
+            const text = range.readPlaintext().trim();
+            if (text) parts.push(text);
+          }
+          slideText = parts.join(" • ");
+        }
+      );
+    } catch {
+      // Content querying unavailable — proceed without slide text
+    }
+
+    // Step 2 — call backend /api/magic-prompt
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/magic-prompt`, {
+        method: "POST",
+        headers: buildHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ slideText, modelId }),
+      });
+      const data = await res.json() as Record<string, string>;
+      if (!res.ok) {
+        setSparkError(data.message || "Spark Prompt failed");
+        return;
+      }
+      if (data.prompt) setPrompt(data.prompt);
+    } catch (err: any) {
+      setSparkError("Network error — is Render running?");
+    } finally {
+      setSparkLoading(false);
+    }
+  }, [buildHeaders, modelId]);
 
   // When model changes, trim refs, snap dimensions, and cap count
   const handleModelChange = useCallback((newId: string) => {
@@ -996,7 +1045,20 @@ export function App() {
 
       {/* Prompt */}
       <div className="section">
-        <label className="label">PROMPT</label>
+        <div className="prompt-header">
+          <label className="label">PROMPT</label>
+          <button
+            className={`spark-btn ${sparkLoading ? "spark-btn-loading" : ""}`}
+            onClick={handleSparkPrompt}
+            disabled={isGenerating || sparkLoading}
+            title="Read your slide and generate a smart prompt with AI"
+          >
+            {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}
+          </button>
+        </div>
+        {sparkError && (
+          <div className="spark-error">{sparkError}</div>
+        )}
         <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} />
       </div>
 

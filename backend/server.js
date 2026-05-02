@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import Anthropic from "@anthropic-ai/sdk";
 
 // Load .env from parent directory
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -14,6 +15,11 @@ const PORT = process.env.BACKEND_PORT || 3001;
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const LEONARDO_BASE    = "https://cloud.leonardo.ai/api/rest/v1";
 const LEONARDO_V2_BASE = "https://cloud.leonardo.ai/api/rest/v2";
+
+// Anthropic client for Spark Prompt — optional, only if ANTHROPIC_API_KEY is set
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
 // Helper: resolve the API key to use — user-supplied key takes priority
 function resolveKey(req) {
@@ -478,8 +484,59 @@ app.get("/api/models", async (_req, res) => {
   }
 });
 
+// ─── POST /api/magic-prompt ──────────────────────────────────────────────────
+// Reads slide text from the Canva app, calls Claude to generate a Leonardo
+// image prompt tailored to the selected model. Requires ANTHROPIC_API_KEY.
+const MODEL_STYLE_HINTS = {
+  "gpt-image-2":    "photorealistic photography with rich detail and precise lighting",
+  "gemini-image-2": "vibrant, painterly illustration with expressive color",
+  "seedream-4.5":   "cinematic digital art with atmospheric depth",
+  "flux-2-pro":     "crisp, high-fidelity professional imagery",
+};
+
+app.post("/api/magic-prompt", async (req, res) => {
+  if (!anthropic) {
+    return res.status(503).json({
+      message: "Spark Prompt requires ANTHROPIC_API_KEY — add it to your Render environment variables.",
+    });
+  }
+
+  const { slideText = "", modelId = "gpt-image-2" } = req.body;
+  const styleHint = MODEL_STYLE_HINTS[modelId] || "photorealistic, high-quality imagery";
+
+  const system = `You are a creative director specialising in AI image generation prompts for Leonardo.AI. Your output is sent directly to the ${modelId} model, which excels at ${styleHint}.
+
+Rules:
+- Write a single descriptive paragraph, 50–120 words
+- Translate abstract ideas into concrete visual details: lighting, composition, colour palette, mood, textures
+- Mention a specific style or medium at the end (e.g. "professional photography, shallow depth of field, golden hour lighting")
+- Do NOT include explanation or preamble — return only the raw image prompt`;
+
+  const user = slideText.trim()
+    ? `The current Canva slide contains this text:\n\n"${slideText.trim()}"\n\nWrite a Leonardo image prompt that visually represents this content.`
+    : `The current slide has no text. Write a polished, versatile Leonardo image prompt suitable for a professional presentation background.`;
+
+  try {
+    const message = await anthropic.messages.create({
+      model:      "claude-haiku-4-5-20251001",
+      max_tokens: 300,
+      system,
+      messages: [{ role: "user", content: user }],
+    });
+
+    const prompt = message.content[0]?.text?.trim() || "";
+    if (!prompt) return res.status(500).json({ message: "No prompt returned by Claude" });
+
+    console.log(`✓ Spark Prompt generated (${prompt.length} chars, model: ${modelId})`);
+    return res.json({ prompt });
+  } catch (err: any) {
+    console.error("Spark Prompt error:", err.message);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-8", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-9", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
