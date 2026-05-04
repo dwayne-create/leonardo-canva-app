@@ -722,6 +722,7 @@ body {
   cursor: pointer;
   transition: all 0.15s;
   text-align: center;
+  position: relative;
 }
 
 .style-card:hover {
@@ -1721,156 +1722,87 @@ body {
   font-style: italic;
 }
 
-/* ─── Canva Brand toggle ───────────────────────────────────────────────────── */
-.canva-brand-row {
-  margin: 4px 0 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.canva-brand-toggle {
+/* ─── Canva Brand toggle — inside style picker modal ──────────────────────── */
+.modal-brand-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 10px;
-  border: 1.5px solid #e5e7eb;
-  background: #f9fafb;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-  width: 100%;
-  text-align: left;
-}
-
-.canva-brand-toggle:hover:not(:disabled) {
-  border-color: #7D2AE7;
-  background: #faf5ff;
-}
-
-.canva-brand-toggle.active {
-  border-color: #7D2AE7;
   background: linear-gradient(135deg, #faf5ff 0%, #f0fafa 100%);
-  box-shadow: 0 0 0 2px rgba(125, 42, 231, 0.12);
-}
-
-.canva-brand-toggle:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  border: 1.5px solid #e5e0fa;
+  margin-bottom: 12px;
 }
 
 .canva-brand-logo {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   border-radius: 50%;
 }
 
-.canva-brand-label {
+.modal-brand-label {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
   flex: 1;
 }
 
-.canva-brand-toggle.active .canva-brand-label {
-  color: #7D2AE7;
+.modal-brand-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, color 0.15s;
 }
 
-.canva-brand-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-
-.canva-brand-dot.on {
+.modal-brand-pill.on {
   background: #7D2AE7;
-  box-shadow: 0 0 0 2px rgba(125, 42, 231, 0.25);
+  color: #fff;
 }
 
-.canva-brand-dot.off {
+.modal-brand-pill.off {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.modal-brand-pill.off:hover {
   background: #d1d5db;
 }
 
-.canva-brand-hint {
+.modal-brand-hint {
   font-size: 11px;
   color: #7D2AE7;
-  padding-left: 4px;
+  margin-bottom: 10px;
   opacity: 0.85;
 }
 
-/* ─── Brand style chips ────────────────────────────────────────────────────── */
-.brand-style-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 6px;
-}
-
-.brand-style-chip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1.5px solid #e5e7eb;
-  background: #f9fafb;
-  cursor: pointer;
-  font-size: 11px;
-  color: #6b7280;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-  position: relative;
-}
-
-.brand-style-chip:hover:not(:disabled) {
-  border-color: #7D2AE7;
-  background: #faf5ff;
-  color: #374151;
-}
-
-.brand-style-chip.active {
-  border-color: #7D2AE7;
-  background: #faf5ff;
-  color: #7D2AE7;
-  font-weight: 600;
-}
-
-.brand-style-chip:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Colour-coded dot before each chip showing injection type */
-.brand-style-chip::before {
+/* Colour-coded dot indicator on style cards when Canva Brand is ON */
+.style-card.brand-dot-gradient::after,
+.style-card.brand-dot-accent::after,
+.style-card.brand-dot-none::after {
   content: '';
-  width: 5px;
-  height: 5px;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  flex-shrink: 0;
 }
 
-.chip-gradient::before {
+.style-card.brand-dot-gradient::after {
   background: linear-gradient(135deg, #00C4CC, #7D2AE7);
 }
 
-.chip-accent::before {
+.style-card.brand-dot-accent::after {
   background: #7D2AE7;
 }
 
-.chip-none::before {
+.style-card.brand-dot-none::after {
   background: #d1d5db;
-}
-
-.chip-icon {
-  font-size: 12px;
-  line-height: 1;
-}
-
-.chip-label {
-  font-size: 10.5px;
-  line-height: 1;
 }
 
 /* Small brand-chars note in the char counter */
