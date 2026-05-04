@@ -113,8 +113,36 @@ const API_KEY_STORAGE = "prism_leo_api_key";
 const CANVA_LOGO_WORDMARK_GRADIENT_URL = `${BACKEND_URL}/api/logo/wordmark-gradient`;
 const CANVA_LOGO_WORDMARK_WHITE_URL    = `${BACKEND_URL}/api/logo/wordmark-white`;
 
-// Brand prompt prefix — injected into the user's prompt when Canva Brand is ON
-const CANVA_BRAND_PROMPT_PREFIX = "vibrant clean design aesthetic with teal and purple gradient tones, modern bold Canva-style visual, highly polished,";
+// ─── Brand style logic ───────────────────────────────────────────────────────
+const CANVA_GRADIENT_STYLES = new Set([
+  "Illustration", "Abstract", "Graphic Design", "Stylized / Aesthetic", "Infographic", "Canvafy Me",
+]);
+const CANVA_ACCENT_STYLES = new Set(["3D / CGI"]);
+// Photography, Cinematic / Film, Magazine Cover, Print Ad → logo only, no color injection
+
+const BRAND_STYLES = [
+  { label: "Illustration",          icon: "🎨", short: "Illustr."  },
+  { label: "Abstract",              icon: "🌀", short: "Abstract"  },
+  { label: "Graphic Design",        icon: "✏️",  short: "Graphic"   },
+  { label: "Stylized / Aesthetic",  icon: "✨", short: "Stylized"  },
+  { label: "Infographic",           icon: "📊", short: "Infograph" },
+  { label: "Canvafy Me",            icon: "💎", short: "Canvafy"   },
+  { label: "3D / CGI",              icon: "🧊", short: "3D/CGI"    },
+  { label: "Photography",           icon: "📷", short: "Photo"     },
+  { label: "Cinematic / Film",      icon: "🎬", short: "Cinema"    },
+  { label: "Magazine Cover",        icon: "📰", short: "Magazine"  },
+  { label: "Print Ad",              icon: "🖨️",  short: "Print"     },
+];
+
+function getCanvaBrandPrefix(style: string): string {
+  if (CANVA_GRADIENT_STYLES.has(style)) {
+    return "teal to deep purple diagonal gradient, cyan-teal upper-left to violet-purple lower-right, bold clean modern design,";
+  }
+  if (CANVA_ACCENT_STYLES.has(style)) {
+    return "teal and deep purple color accents, bold clean modern design,";
+  }
+  return ""; // no color injection — logo only for photorealistic styles
+}
 
 // Insert the Canva wordmark as a separate movable layer on the Canva canvas
 async function insertCanvaWordmark(useGradient: boolean) {
@@ -213,7 +241,8 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false);
 
   // Canva Brand mode
-  const [canvaBrand, setCanvaBrand] = useState(false);
+  const [canvaBrand, setCanvaBrand]           = useState(false);
+  const [canvaBrandStyle, setCanvaBrandStyle] = useState("Illustration");
 
   // Magic Layers concept modal
   const [showMagicLayers, setShowMagicLayers] = useState(false);
@@ -303,6 +332,10 @@ export function App() {
 
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
+
+  // Canva Brand derived values — recomputed each render
+  const brandPrefix     = canvaBrand ? getCanvaBrandPrefix(canvaBrandStyle) : "";
+  const promptMaxLength = 1500 - brandPrefix.length;
 
   // Total refs across both sources
   const totalRefs = refImages.length + libRefImages.length;
@@ -643,9 +676,9 @@ export function App() {
     setError(null); setPreviewUrls([]); setIsGenerating(true);
     setStatus("Sending to Leonardo...");
     try {
-      const enrichedPrompt = canvaBrand
-        ? `${CANVA_BRAND_PROMPT_PREFIX} ${prompt.trim()}`
-        : prompt.trim();
+      // Compute prefix inside the callback so it always uses current state
+      const prefix = canvaBrand ? getCanvaBrandPrefix(canvaBrandStyle) : "";
+      const enrichedPrompt = prefix ? `${prefix} ${prompt.trim()}` : prompt.trim();
 
       const genRes = await fetch(`${BACKEND_URL}/api/generate`, {
         method: "POST",
@@ -676,7 +709,9 @@ export function App() {
         // If Canva Brand is on, place the wordmark logo as a separate overlay
         if (canvaBrand) {
           try {
-            await insertCanvaWordmark(true); // gradient wordmark
+            // Colors injected → image has brand palette → use white logo for contrast
+            // No injection (photo/cinematic) → natural image → use gradient logo
+            await insertCanvaWordmark(prefix === "");
             setStatus("✓ Image + Canva logo added to your slide!");
           } catch {
             setStatus("✓ Image added! (Logo placement unavailable)");
@@ -693,7 +728,7 @@ export function App() {
     } finally {
       setIsGenerating(false);
     }
-  }, [modelId, prompt, width, height, count, quality, refImages, buildHeaders]);
+  }, [modelId, prompt, width, height, count, quality, refImages, buildHeaders, canvaBrand, canvaBrandStyle]);
 
   const handleAddToSlide = async (url: string) => {
     setIsGenerating(true);
@@ -1231,9 +1266,10 @@ export function App() {
         {sparkError && (
           <div className="spark-error">{sparkError}</div>
         )}
-        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} maxLength={1500} />
-        <div className={`char-counter ${prompt.length > 1400 ? "char-counter-warn" : ""} ${prompt.length >= 1500 ? "char-counter-over" : ""}`}>
-          {prompt.length} / 1500
+        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} maxLength={promptMaxLength} />
+        <div className={`char-counter ${prompt.length > promptMaxLength - 100 ? "char-counter-warn" : ""} ${prompt.length >= promptMaxLength ? "char-counter-over" : ""}`}>
+          {prompt.length} / {promptMaxLength}
+          {brandPrefix && <span className="brand-chars-note"> +{brandPrefix.length} brand</span>}
         </div>
       </div>
 
@@ -1266,7 +1302,29 @@ export function App() {
           <span className={`canva-brand-dot ${canvaBrand ? "on" : "off"}`} />
         </button>
         {canvaBrand && (
-          <div className="canva-brand-hint">Brand colors in prompt · Logo placed after generation</div>
+          <>
+            {/* Style chips — compact selector inline on the toggle */}
+            <div className="brand-style-chips">
+              {BRAND_STYLES.map(({ label, icon, short }) => (
+                <button
+                  key={label}
+                  className={`brand-style-chip ${canvaBrandStyle === label ? "active" : ""} ${CANVA_GRADIENT_STYLES.has(label) ? "chip-gradient" : CANVA_ACCENT_STYLES.has(label) ? "chip-accent" : "chip-none"}`}
+                  onClick={() => setCanvaBrandStyle(label)}
+                  disabled={isGenerating}
+                  title={label}
+                >
+                  <span className="chip-icon">{icon}</span>
+                  <span className="chip-label">{short}</span>
+                </button>
+              ))}
+            </div>
+            <div className="canva-brand-hint">
+              {brandPrefix
+                ? `${CANVA_GRADIENT_STYLES.has(canvaBrandStyle) ? "Teal→purple gradient" : "Teal & purple accents"} injected · White logo · ${brandPrefix.length} chars reserved`
+                : "Logo only — no color injection for this style"
+              }
+            </div>
+          </>
         )}
       </div>
 

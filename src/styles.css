@@ -1801,3 +1801,83 @@ body {
   opacity: 0.85;
 }
 
+/* ─── Brand style chips ────────────────────────────────────────────────────── */
+.brand-style-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.brand-style-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1.5px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 11px;
+  color: #6b7280;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  position: relative;
+}
+
+.brand-style-chip:hover:not(:disabled) {
+  border-color: #7D2AE7;
+  background: #faf5ff;
+  color: #374151;
+}
+
+.brand-style-chip.active {
+  border-color: #7D2AE7;
+  background: #faf5ff;
+  color: #7D2AE7;
+  font-weight: 600;
+}
+
+.brand-style-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Colour-coded dot before each chip showing injection type */
+.brand-style-chip::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chip-gradient::before {
+  background: linear-gradient(135deg, #00C4CC, #7D2AE7);
+}
+
+.chip-accent::before {
+  background: #7D2AE7;
+}
+
+.chip-none::before {
+  background: #d1d5db;
+}
+
+.chip-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.chip-label {
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+/* Small brand-chars note in the char counter */
+.brand-chars-note {
+  color: #7D2AE7;
+  opacity: 0.75;
+  font-size: 10px;
+  margin-left: 2px;
+}
+
