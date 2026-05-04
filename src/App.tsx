@@ -107,6 +107,36 @@ interface LibraryImage {
 
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 const API_KEY_STORAGE = "prism_leo_api_key";
+
+// ─── Canva Brand ─────────────────────────────────────────────────────────────
+// Logo URLs — served by our backend so Canva's asset uploader can fetch them
+const CANVA_LOGO_WORDMARK_GRADIENT_URL = `${BACKEND_URL}/api/logo/wordmark-gradient`;
+const CANVA_LOGO_WORDMARK_WHITE_URL    = `${BACKEND_URL}/api/logo/wordmark-white`;
+
+// Brand prompt prefix — injected into the user's prompt when Canva Brand is ON
+const CANVA_BRAND_PROMPT_PREFIX = "vibrant clean design aesthetic with teal and purple gradient tones, modern bold Canva-style visual, highly polished,";
+
+// Insert the Canva wordmark as a separate movable layer on the Canva canvas
+async function insertCanvaWordmark(useGradient: boolean) {
+  const logoUrl = useGradient ? CANVA_LOGO_WORDMARK_GRADIENT_URL : CANVA_LOGO_WORDMARK_WHITE_URL;
+  const asset = await upload({
+    type: "image",
+    mimeType: "image/svg+xml",
+    url: logoUrl,
+    thumbnailUrl: logoUrl,
+    width: 2000,
+    height: 642,
+    aiDisclosure: "none",
+  });
+  // Place the wordmark in the lower-right area of the canvas
+  await addElementAtPoint({
+    type: "image",
+    ref: asset.ref,
+    altText: { text: "Canva logo", decorative: false },
+    atPoint: { x: 72, y: 88 },
+  });
+}
+
 const LIB_PICKER_PAGE_SIZE = 18; // 6×3 grid per page
 
 async function insertIntoCanva(url: string, width: number, height: number) {
@@ -182,6 +212,9 @@ export function App() {
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
+  // Canva Brand mode
+  const [canvaBrand, setCanvaBrand] = useState(false);
+
   // Magic Layers concept modal
   const [showMagicLayers, setShowMagicLayers] = useState(false);
 
@@ -191,6 +224,7 @@ export function App() {
   const [promptStyle,     setPromptStyle]     = useState("Photography");
   const [showStyleModal,  setShowStyleModal]  = useState(false);
   const [sparkSlideImage, setSparkSlideImage] = useState<string | null>(null); // base64 JPEG of pasted slide
+
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -382,6 +416,7 @@ export function App() {
       setKeyTestLoading(false);
     }
   };
+
 
   // ── Spark Prompt ─────────────────────────────────────────────────────────────
   // Step 1: clicking the button opens the style picker modal
@@ -608,12 +643,16 @@ export function App() {
     setError(null); setPreviewUrls([]); setIsGenerating(true);
     setStatus("Sending to Leonardo...");
     try {
+      const enrichedPrompt = canvaBrand
+        ? `${CANVA_BRAND_PROMPT_PREFIX} ${prompt.trim()}`
+        : prompt.trim();
+
       const genRes = await fetch(`${BACKEND_URL}/api/generate`, {
         method: "POST",
         headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           modelId,
-          prompt: prompt.trim(),
+          prompt: enrichedPrompt,
           width,
           height,
           num_images: count,
@@ -634,7 +673,17 @@ export function App() {
       setStatus("Done! Adding to slide...");
       try {
         await insertIntoCanva(urls[0], width, height);
-        setStatus("✓ Image added to your slide!");
+        // If Canva Brand is on, place the wordmark logo as a separate overlay
+        if (canvaBrand) {
+          try {
+            await insertCanvaWordmark(true); // gradient wordmark
+            setStatus("✓ Image + Canva logo added to your slide!");
+          } catch {
+            setStatus("✓ Image added! (Logo placement unavailable)");
+          }
+        } else {
+          setStatus("✓ Image added to your slide!");
+        }
       } catch {
         setStatus("✓ Done! Click a result to add it to your slide.");
       }
@@ -826,6 +875,7 @@ export function App() {
           </div>
         </div>
       )}
+
 
       {/* Style picker modal — opens when user clicks Spark Prompt */}
       {showStyleModal && (
@@ -1189,6 +1239,36 @@ export function App() {
 
       {error && <div className="error-banner">{error}</div>}
       {status && <div className="status-banner">{status}</div>}
+
+      {/* Canva Brand toggle */}
+      <div className="canva-brand-row">
+        <button
+          className={`canva-brand-toggle ${canvaBrand ? "active" : ""}`}
+          onClick={() => setCanvaBrand((v) => !v)}
+          disabled={isGenerating}
+          title={canvaBrand ? "Canva Brand mode is ON — click to turn off" : "Turn on Canva Brand mode"}
+        >
+          <svg className="canva-brand-logo" viewBox="0 0 1900 1900" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="950" cy="950" r="950" fill="#7D2AE7"/>
+            <circle cx="950" cy="950" r="950" fill="url(#cbg1)"/>
+            <circle cx="950" cy="950" r="950" fill="url(#cbg2)"/>
+            <path d="M1707.73 1002.08C1705.18 1002.08 1702.91 1003.79 1701.78 1007.19C1686.37 1051.05 1665.57 1077.23 1648.46 1077.23C1638.63 1077.23 1634.66 1066.27 1634.66 1049.06C1634.66 1006.15 1660.47 915.025 1673.32 873.433C1674.84 869.145 1675.7 864.651 1675.88 860.104C1675.88 848.005 1669.26 842.05 1652.91 842.05C1636.55 842.05 1616.23 849.045 1597.89 881.373C1591.46 852.826 1572.18 840.348 1545.24 840.348C1514.14 840.348 1484.08 860.388 1459.31 892.811C1434.55 925.234 1405.53 936.01 1383.6 930.716C1399.38 892.244 1405.15 863.413 1405.15 842.05C1405.15 808.492 1388.61 788.264 1361.86 788.264C1321.11 788.264 1297.67 827.114 1297.67 867.95C1297.67 899.522 1311.95 932.04 1343.52 947.826C1317.14 1007.47 1278.58 1061.45 1263.93 1061.45C1245.02 1061.45 1239.44 969 1240.58 902.831C1241.14 864.925 1244.36 862.94 1244.36 851.408C1244.36 844.886 1240.01 840.348 1222.9 840.348C1182.92 840.348 1170.44 874.284 1168.64 913.229C1167.95 927.995 1165.64 942.641 1161.74 956.9C1144.92 1016.64 1110.51 1061.92 1088.01 1061.92C1077.52 1061.92 1074.78 1051.43 1074.78 1037.82C1074.78 994.901 1098.79 941.114 1098.79 895.363C1098.79 861.617 1084.04 840.348 1056.15 840.348C1023.45 840.348 980.06 879.388 939.035 952.363C952.553 896.497 958.035 842.333 918.145 842.333C909.464 842.467 900.941 844.671 893.284 848.761C887.801 851.597 884.871 856.701 885.249 862.373C889.03 922.02 837.229 1074.49 788.075 1074.49C779.095 1074.49 774.841 1064.85 774.841 1049.16C774.841 1006.24 800.458 915.308 813.314 873.622C814.88 869.085 815.741 864.335 815.866 859.537C815.866 848.194 808.871 842.333 792.896 842.333C775.314 842.333 756.314 849.045 737.881 881.373C731.453 852.826 712.169 840.348 685.324 840.348C641.179 840.348 591.741 887.045 570.095 948.015C541.075 1029.31 482.562 1107.77 403.821 1107.77C332.358 1107.77 294.642 1048.31 294.642 954.443C294.642 818.701 394.274 707.915 468.1 707.915C503.453 707.915 520.279 730.413 520.279 764.915C520.279 806.697 497.025 826.075 497.025 841.955C497.025 846.776 500.995 851.597 509.03 851.597C541.169 851.597 578.886 813.881 578.886 762.458C578.886 711.035 537.199 673.318 463.279 673.318C341.244 673.318 218.358 796.204 218.358 953.592C218.358 1078.84 280.179 1154.37 386.995 1154.37C459.876 1154.37 523.587 1097.75 557.995 1031.48C561.871 1086.4 586.732 1114.95 624.637 1114.95C658.383 1114.95 685.702 1094.91 706.592 1059.56C714.627 1096.52 735.896 1114.67 763.592 1114.67C795.353 1114.67 821.821 1094.53 847.06 1057.19C846.682 1086.5 853.393 1114.1 878.821 1114.1C890.826 1114.1 905.194 1111.36 907.746 1100.87C934.403 990.174 1000.67 899.806 1020.9 899.806C1026.85 899.806 1028.46 905.478 1028.46 912.378C1028.46 942.438 1007.28 1004.07 1007.28 1043.39C1007.28 1086.02 1025.34 1114.1 1062.68 1114.1C1104.08 1114.1 1146.14 1063.43 1174.22 989.323C1183.01 1058.52 1202.01 1114.38 1231.6 1114.38C1268.08 1114.38 1332.84 1037.72 1372.06 956.428C1387.38 958.413 1410.54 957.94 1432.66 942.249C1423.3 966.164 1417.72 992.348 1417.72 1018.44C1417.72 1093.87 1453.64 1114.95 1484.65 1114.95C1518.39 1114.95 1545.71 1094.91 1566.6 1059.56C1573.5 1091.41 1591.08 1114.57 1623.51 1114.57C1674.17 1114.57 1718.22 1062.77 1718.22 1020.23C1718.22 1008.99 1713.4 1002.08 1707.73 1002.08Z" fill="white"/>
+            <defs>
+              <radialGradient id="cbg1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(367 1684) rotate(-49.4156) scale(1469.49)">
+                <stop stopColor="#6420FF"/><stop offset="1" stopColor="#6420FF" stopOpacity="0"/>
+              </radialGradient>
+              <radialGradient id="cbg2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(503 216) rotate(54.7035) scale(1657.12)">
+                <stop stopColor="#00C4CC"/><stop offset="1" stopColor="#00C4CC" stopOpacity="0"/>
+              </radialGradient>
+            </defs>
+          </svg>
+          <span className="canva-brand-label">Canva Brand</span>
+          <span className={`canva-brand-dot ${canvaBrand ? "on" : "off"}`} />
+        </button>
+        {canvaBrand && (
+          <div className="canva-brand-hint">Brand colors in prompt · Logo placed after generation</div>
+        )}
+      </div>
 
       <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
         {isGenerating ? "Generating..." : (

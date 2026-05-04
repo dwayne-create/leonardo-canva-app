@@ -1720,3 +1720,84 @@ body {
   color: #9ca3af;
   font-style: italic;
 }
+
+/* ─── Canva Brand toggle ───────────────────────────────────────────────────── */
+.canva-brand-row {
+  margin: 4px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.canva-brand-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  width: 100%;
+  text-align: left;
+}
+
+.canva-brand-toggle:hover:not(:disabled) {
+  border-color: #7D2AE7;
+  background: #faf5ff;
+}
+
+.canva-brand-toggle.active {
+  border-color: #7D2AE7;
+  background: linear-gradient(135deg, #faf5ff 0%, #f0fafa 100%);
+  box-shadow: 0 0 0 2px rgba(125, 42, 231, 0.12);
+}
+
+.canva-brand-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.canva-brand-logo {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.canva-brand-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  flex: 1;
+}
+
+.canva-brand-toggle.active .canva-brand-label {
+  color: #7D2AE7;
+}
+
+.canva-brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.canva-brand-dot.on {
+  background: #7D2AE7;
+  box-shadow: 0 0 0 2px rgba(125, 42, 231, 0.25);
+}
+
+.canva-brand-dot.off {
+  background: #d1d5db;
+}
+
+.canva-brand-hint {
+  font-size: 11px;
+  color: #7D2AE7;
+  padding-left: 4px;
+  opacity: 0.85;
+}
+
