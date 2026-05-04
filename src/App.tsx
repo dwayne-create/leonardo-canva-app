@@ -844,20 +844,31 @@ export function App() {
                 <p>Tap ⚙︎ Settings, paste your Leonardo API key and hit Save. Your key is stored only on this device.</p>
               </div>
               <div className="help-section">
-                <div className="help-h">🎨 Generate tab</div>
+                <div className="help-h">🖼 Generate tab</div>
                 <p><strong>Model</strong> — choose GPT Image 2, Nano Banana Pro, Seedream 4.5, or Flux.2 Pro. Each has different strengths and credit costs.</p>
                 <p><strong>Quality</strong> — GPT Image 2 only. Low uses fewer credits; High produces sharper results.</p>
                 <p><strong>Size</strong> — pick a standard ratio or social preset, or drag the sliders for a custom size.</p>
-                <p><strong>Reference images</strong> — optionally add up to 6 images to guide the style or composition. Use "+ From computer" to upload, or "+ From library" to pick from your previous generations.</p>
-                <p><strong>Prompt</strong> — describe the image. Be specific for best results.</p>
-                <p><strong>Generate button</strong> — shows the estimated credit cost before you click. The first result is added to your slide automatically.</p>
+                <p><strong>Reference images</strong> — optionally add up to 6 images to guide style or composition. Use "+ From computer" to upload, or "+ From library" to pick from past generations.</p>
+                <p><strong>Prompt</strong> — describe the image. Be specific for best results. The character counter shows how many of the 1500-character limit you've used.</p>
+                <p><strong>Generate button</strong> — shows the estimated credit cost. The first result is added to your slide automatically.</p>
               </div>
               <div className="help-section">
                 <div className="help-h">✨ Spark Prompt</div>
-                <p>Spark Prompt uses AI to write a Leonardo prompt based on your slide content — so you don't have to. Click <strong>✨ Spark Prompt</strong> in the Generate tab, pick a visual style (Photography, Magazine Cover, 3D / CGI, Infographic, etc.), then hit <strong>Generate Prompt</strong>. Gemini reads the text on your current slide and writes a prompt tailored to the style you chose. You can edit the prompt before generating.</p>
+                <p>Spark Prompt uses AI to write a Leonardo prompt from your slide content — so you don't have to. Click <strong>✨ Spark Prompt</strong>, pick a visual style, then hit <strong>Generate Prompt</strong>. Gemini reads your current slide and writes a prompt tailored to the style you chose. Edit it before generating if you like.</p>
+                <p><strong>Styles available:</strong> Photography, Illustration, Magazine Cover, Abstract, 3D / CGI, Cinematic / Film, Stylized / Aesthetic, Print Ad, Graphic Design, Infographic — and <strong>💎 Canvafy Me</strong>.</p>
+                <p><strong>💎 Canvafy Me</strong> is the "I'm feeling lucky" style. Instead of you picking the medium, Gemini acts as a world-class art director — reads your slide, chooses whatever visual approach will look most stunning, and writes the prompt at the highest possible level. Great when you're not sure which style to pick.</p>
               </div>
               <div className="help-section">
-                <div className="help-h">🖼 Library tab</div>
+                <div className="help-h">🎨 Canva Brand mode</div>
+                <p>Canva Brand injects Canva's teal-to-purple palette into your generated image and places the official Canva wordmark on your canvas as a separate movable element.</p>
+                <p>To use it: open <strong>✨ Spark Prompt</strong>, flip the <strong>Canva Brand</strong> pill at the top of the modal from OFF to ON, then pick a style. The selected style determines what gets injected:</p>
+                <p><strong>Gradient styles</strong> (Illustration, Abstract, Graphic Design, Stylized, Infographic, Canvafy Me) → teal-to-purple diagonal gradient injected · white wordmark placed.</p>
+                <p><strong>Accent style</strong> (3D / CGI) → teal and purple accents injected · white wordmark placed.</p>
+                <p><strong>Natural image styles</strong> (Photography, Cinematic, Magazine Cover, Print Ad) → no colour injection · gradient wordmark placed.</p>
+                <p>Canva Brand is <strong>OFF by default</strong>. The character counter adjusts automatically to reserve space for the brand colour prefix.</p>
+              </div>
+              <div className="help-section">
+                <div className="help-h">📚 Library tab</div>
                 <p>Browse all your past generations. Click "+ Add to slide" to insert any image, or the 🗑 icon to delete it from your Leonardo account.</p>
               </div>
               <div className="help-section">
@@ -866,7 +877,7 @@ export function App() {
               </div>
               <div className="help-section">
                 <div className="help-h">💡 Tips</div>
-                <p>Add a reference image to match an existing slide's visual style. Use 9:16 for full-bleed portrait slides, 16:9 for landscape backgrounds.</p>
+                <p>Add a reference image to match an existing slide's visual style. Use 9:16 for full-bleed portrait slides, 16:9 for landscape backgrounds. Canvafy Me + Canva Brand is a powerful combo — let the AI direct the creative, with Canva's brand applied on top.</p>
               </div>
             </div>
             <div className="modal-actions" style={{ marginTop: 16 }}>
