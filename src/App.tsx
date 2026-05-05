@@ -943,7 +943,7 @@ export function App() {
                   </radialGradient>
                 </defs>
               </svg>
-              <span className="modal-brand-label">Canva Brand</span>
+              <span className="modal-brand-label">Apply Canva Brand</span>
               <button
                 className={`modal-brand-pill ${canvaBrand ? "on" : "off"}`}
                 onClick={() => setCanvaBrand((v) => !v)}
