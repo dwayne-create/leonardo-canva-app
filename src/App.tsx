@@ -1919,7 +1919,7 @@ export function App() {
               <div className="feedback-done">
                 <div className="feedback-done-icon">✓</div>
                 <p>Thanks! Your feedback was submitted.</p>
-                <a href={FEEDBACK_VIEW_URL} target="_blank" rel="noreferrer" className="feedback-view-link">See all feedback →</a>
+                <button className="feedback-view-link" onClick={() => window.open(FEEDBACK_VIEW_URL, "_blank")}>See all feedback →</button>
                 <button className="feedback-close-btn" onClick={() => setShowFeedback(false)}>Close</button>
               </div>
             ) : (
@@ -1954,7 +1954,7 @@ export function App() {
                 {fbError && <div className="feedback-error">{fbError}</div>}
 
                 <div className="feedback-actions">
-                  <a href={FEEDBACK_VIEW_URL} target="_blank" rel="noreferrer" className="feedback-view-link">See all feedback →</a>
+                  <button className="feedback-view-link" onClick={() => window.open(FEEDBACK_VIEW_URL, "_blank")}>See all feedback →</button>
                   <div className="feedback-btns">
                     <button className="feedback-cancel-btn" onClick={() => setShowFeedback(false)}>Cancel</button>
                     <button
