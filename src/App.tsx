@@ -1087,7 +1087,7 @@ export function App() {
 
   return (
     <div className="app">
-      <div className="app-inner">
+      <div>
 
       {/* Library reference picker modal */}
       {showLibPicker && (
