@@ -1813,19 +1813,20 @@ body {
   margin-left: 2px;
 }
 
-/* ── Blueprint badge (top-left corner on BP-generated images) ── */
-.bp-badge {
+/* ── Blueprint label (bottom bar on BP-generated library images) ── */
+.bp-label {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  background: #00C4CC;
-  color: white;
-  font-size: 7px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0) 100%);
+  color: #fff;
+  font-size: 9px;
   font-weight: 600;
-  border-radius: 3px;
-  padding: 1px 3px;
+  padding: 12px 5px 4px;
   pointer-events: none;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+  border-radius: 0 0 6px 6px;
   z-index: 1;
 }
 

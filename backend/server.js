@@ -819,17 +819,34 @@ app.get("/api/blueprint-execution/:id/generations", async (req, res) => {
   }
 });
 
-// List blueprints with thumbnails (used by frontend to populate BP card images)
+// List blueprints with thumbnails — paginates through ALL pages server-side
+// so the frontend gets the full picture in one shot.
 app.get("/api/blueprint-list", async (req, res) => {
   const apiKey = resolveKey(req);
   try {
-    // The blueprints endpoint returns pages of blueprints with their versions and thumbnails
-    const r = await fetch(`${LEONARDO_BASE}/blueprints?limit=100`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    const data = await r.json();
-    if (!r.ok) return res.status(r.status).json(data);
-    res.json(data);
+    const allEdges = [];
+    let cursor = null;
+    const MAX_PAGES = 10; // up to 100 blueprints total
+
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const url = cursor
+        ? `${LEONARDO_BASE}/blueprints?after=${encodeURIComponent(cursor)}`
+        : `${LEONARDO_BASE}/blueprints`;
+
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+      if (!r.ok) break; // stop on error, return what we have
+
+      const data = await r.json();
+      const edges = data?.blueprints?.edges;
+      if (!Array.isArray(edges) || edges.length === 0) break;
+
+      allEdges.push(...edges);
+      const lastCursor = edges[edges.length - 1]?.cursor;
+      if (!lastCursor || lastCursor === cursor) break;
+      cursor = lastCursor;
+    }
+
+    res.json({ blueprints: { edges: allEdges } });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
