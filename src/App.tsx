@@ -113,6 +113,18 @@ const API_KEY_STORAGE = "prism_leo_api_key";
 const SHOW_FEEDBACK = true;
 const FEEDBACK_VIEW_URL = "https://airtable.com/appPXp57L7JiTWiPF";
 
+// Opens a URL in a new tab — works inside Canva's iframe sandbox
+// (window.open and <a target="_blank"> are both blocked; programmatic anchor click is not)
+function openLink(url: string) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 // ─── Canva Brand ─────────────────────────────────────────────────────────────
 // Logo URLs — served by our backend so Canva's asset uploader can fetch them
 const CANVA_LOGO_WORDMARK_GRADIENT_URL = `${BACKEND_URL}/api/logo/wordmark-gradient`;
@@ -1919,7 +1931,7 @@ export function App() {
               <div className="feedback-done">
                 <div className="feedback-done-icon">✓</div>
                 <p>Thanks! Your feedback was submitted.</p>
-                <button className="feedback-view-link" onClick={() => window.open(FEEDBACK_VIEW_URL, "_blank")}>See all feedback →</button>
+                <button className="feedback-view-link" onClick={() => openLink(FEEDBACK_VIEW_URL)}>See all feedback →</button>
                 <button className="feedback-close-btn" onClick={() => setShowFeedback(false)}>Close</button>
               </div>
             ) : (
@@ -1954,7 +1966,7 @@ export function App() {
                 {fbError && <div className="feedback-error">{fbError}</div>}
 
                 <div className="feedback-actions">
-                  <button className="feedback-view-link" onClick={() => window.open(FEEDBACK_VIEW_URL, "_blank")}>See all feedback →</button>
+                  <button className="feedback-view-link" onClick={() => openLink(FEEDBACK_VIEW_URL)}>See all feedback →</button>
                   <div className="feedback-btns">
                     <button className="feedback-cancel-btn" onClick={() => setShowFeedback(false)}>Cancel</button>
                     <button

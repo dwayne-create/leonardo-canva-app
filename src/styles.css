@@ -2073,13 +2073,14 @@ body {
 }
 
 .feedback-category-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-bottom: 10px;
 }
 
 .feedback-cat-chip {
-  padding: 4px 12px;
+  padding: 6px 8px;
   border-radius: 14px;
   border: 1px solid #e5e7eb;
   background: #f9fafb;
@@ -2088,6 +2089,8 @@ body {
   color: #6b7280;
   cursor: pointer;
   transition: all 0.15s;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .feedback-cat-chip:hover {
