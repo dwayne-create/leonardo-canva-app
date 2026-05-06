@@ -1877,7 +1877,17 @@ body {
   width: calc(100% - 32px);
   max-width: 340px;
   max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable BP card list inside the modal */
+.bp-scroll-area {
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px; /* prevents scrollbar overlapping cards */
 }
 
 .bp-picker-sub {

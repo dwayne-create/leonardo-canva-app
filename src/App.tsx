@@ -830,11 +830,21 @@ export function App() {
         // Shape D: generationIds string array
         if (Array.isArray(bpNode.generationIds)) return bpNode.generationIds;
         if (Array.isArray(genListData.generationIds)) return genListData.generationIds;
+        // Shape E: { blueprintExecutionGenerations: { edges: [{node: {id}}] } }  (GraphQL pagination)
+        const bpeg = genListData.blueprintExecutionGenerations;
+        if (bpeg) {
+          if (Array.isArray(bpeg.edges) && bpeg.edges.length > 0)
+            return bpeg.edges.map((e: any) => e?.node?.id || e?.node?.generationId || e?.id).filter(Boolean);
+          if (Array.isArray(bpeg.nodes) && bpeg.nodes.length > 0)
+            return bpeg.nodes.map((n: any) => n?.id || n?.generationId).filter(Boolean);
+          if (Array.isArray(bpeg) && bpeg.length > 0)
+            return bpeg.map((g: any) => g?.id || g?.generationId || g).filter(Boolean);
+        }
         return [];
       })();
 
       console.log("[BP genIds]", genIds);
-      if (genIds.length === 0) throw new Error(`Blueprint completed but returned no generation IDs.\nDebug: ${genListRaw.slice(0, 300)}`);
+      if (genIds.length === 0) throw new Error(`Blueprint completed but returned no generation IDs.\nDebug: ${genListRaw.slice(0, 600)}`);
 
       // Step 4 — Poll each generation for image URLs, then insert to canvas
       const newImages: LibraryImage[] = [];
@@ -1093,6 +1103,7 @@ export function App() {
             <div className="modal-title">✦ Run a Blueprint</div>
             <p className="bp-picker-sub">Choose an AI workflow to apply to your image.</p>
 
+            <div className="bp-scroll-area">
             {(["relight", "portrait", "product", "creative"] as const).map((cat) => {
               const catBPs = CURATED_BLUEPRINTS.filter((b) => b.category === cat);
               const catLabel: Record<string, string> = {
@@ -1133,6 +1144,7 @@ export function App() {
                 </div>
               );
             })}
+            </div>
 
             {selectedBp?.textNodeId && (
               <div className="bp-text-row">
