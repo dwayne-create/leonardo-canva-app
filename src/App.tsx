@@ -224,6 +224,16 @@ const CURATED_BLUEPRINTS: BpDef[] = [
     textLabel: "New background", textPlaceholder: "e.g., gradient blue, mountain landscape, city skyline" },
 ];
 
+/** Load an image URL and return its actual pixel dimensions. */
+async function probeImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve({ width: 512, height: 512 });
+    img.src = url;
+  });
+}
+
 async function insertIntoCanva(url: string, width: number, height: number) {
   // Route Leonardo CDN URLs through our proxy so Canva can fetch them without
   // hitting CORS restrictions or S3 signed-URL expiry on the client side.
@@ -719,8 +729,15 @@ export function App() {
               gen?.generated_images?.[0];
             if (freshImg?.url) {
               url    = freshImg.url;
-              width  = freshImg.width  || width;
-              height = freshImg.height || height;
+              // Probe actual dimensions if the API doesn't return them
+              if (freshImg.width && freshImg.height) {
+                width  = freshImg.width;
+                height = freshImg.height;
+              } else {
+                const dims = await probeImageDimensions(freshImg.url);
+                width  = dims.width;
+                height = dims.height;
+              }
             }
           }
         } catch { /* fall back to stored URL */ }
@@ -890,13 +907,22 @@ export function App() {
           const gen = pollData.generations_by_pk;
           if (gen?.status === "COMPLETE") {
             for (const img of gen.generated_images || []) {
+              // Use API-provided dimensions. If missing, probe the actual image
+              // so we don't inherit source dimensions and distort the output.
+              let w = img.width as number;
+              let h = img.height as number;
+              if (!w || !h) {
+                const dims = await probeImageDimensions(img.url);
+                w = dims.width;
+                h = dims.height;
+              }
               newImages.push({
                 id: img.id,
                 generationId: genId,
                 url: img.url,
                 prompt: `[${selectedBp.name}] ${bpSourceImg.prompt}`,
-                width: img.width || bpSourceImg.width,
-                height: img.height || bpSourceImg.height,
+                width: w,
+                height: h,
                 createdAt: new Date().toISOString(),
                 isBlueprintOutput: true,
               });
