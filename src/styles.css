@@ -1844,7 +1844,7 @@ body {
 .prompt-section {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 6px;
 }
 
 /* ── Blueprint output count pill on card ─────────────────────── */
