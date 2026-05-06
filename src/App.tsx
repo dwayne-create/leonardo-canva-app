@@ -755,12 +755,18 @@ export function App() {
         throw new Error(e.error || `Execute error ${execRes.status}`);
       }
       const execData = await execRes.json();
-      // The API wraps the result: { blueprintExecution: { akUUID: "...", ... } }
+      console.log("[BP execute] raw:", JSON.stringify(execData).slice(0, 600));
+      // Try all known field paths, then fall back to any UUID found anywhere in the response
       const executionId =
         execData.blueprintExecution?.akUUID ||
+        execData.blueprintExecution?.id ||
         execData.id ||
         execData.blueprintExecutionId ||
-        execData.blueprintExecution?.id;
+        execData.akUUID ||
+        (() => {
+          const m = JSON.stringify(execData).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+          return m ? m[0] : null;
+        })();
       if (!executionId) throw new Error("No execution ID returned from Blueprint API");
 
       // Step 2 — Poll status until COMPLETE

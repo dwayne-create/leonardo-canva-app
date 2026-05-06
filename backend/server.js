@@ -785,6 +785,7 @@ app.post("/api/blueprint-execute", async (req, res) => {
       }),
     });
     const data = await r.json();
+    console.log("[blueprint-execute] raw response:", JSON.stringify(data).slice(0, 600));
     if (!r.ok) return res.status(r.status).json(data);
     res.json(data);
   } catch (e) {
