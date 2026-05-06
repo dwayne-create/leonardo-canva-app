@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@canva/asset";
-import { addElementAtCursor, addElementAtPoint, editContent } from "@canva/design";
+import { addElementAtPoint, editContent } from "@canva/design";
 import "./styles.css";
 
 // ─── V2 model dimension grids ────────────────────────────────────────────────
@@ -254,22 +254,15 @@ async function insertIntoCanva(url: string, width: number, height: number) {
     height: height || 512,
     aiDisclosure: "app_generated",
   });
-  // Try cursor-based insertion first (works in documents)
-  // Fall back to point-based insertion (works in presentations/slides)
-  try {
-    await addElementAtCursor({
-      type: "image",
-      ref: asset.ref,
-      altText: { text: "AI generated image", decorative: false },
-    });
-  } catch {
-    await addElementAtPoint({
-      type: "image",
-      ref: asset.ref,
-      altText: { text: "AI generated image", decorative: false },
-      atPoint: { x: 50, y: 50 },
-    });
-  }
+  // addElementAtCursor only works in Docs and throws unsupported_page_type in
+  // Presentations — which pollutes the Canva Alerts panel even when caught.
+  // Use addElementAtPoint exclusively; it works in all canvas types.
+  await addElementAtPoint({
+    type: "image",
+    ref: asset.ref,
+    altText: { text: "AI generated image", decorative: false },
+    atPoint: { x: 50, y: 50 },
+  });
 }
 
 export function App() {
