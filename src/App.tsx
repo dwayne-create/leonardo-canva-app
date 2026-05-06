@@ -183,6 +183,7 @@ interface BpDef {
   textPlaceholder?: string;
   thumb?: string;         // CDN thumbnail URL (confirmed)
   thumbVideo?: string;    // looping video thumbnail URL (webm)
+  outputCount?: number;   // number of images the blueprint generates (default 1)
   cost: number;           // estimated credits per execution
 }
 
@@ -209,7 +210,7 @@ const CURATED_BLUEPRINTS: BpDef[] = [
   { versionId: "8c1bdc37-6986-4d9b-ab6e-acfd123d51b2", name: "Merch Mock Up",           desc: "T-shirt, mug, tote & more",         category: "product",  icon: "👕", cost: 60, imageNodeId: "414b2497-5dbc-4f47-a2b4-802f8a30603a", thumb: BP_CDN + "thumbnail-e39c67.webp",
     textNodeId: "4b960270-b613-4708-920c-0feabc104325", textSettingName: "textVariables", textVarName: "products",
     textLabel: "Products", textPlaceholder: "e.g., t-shirt, mug, tote bag, hoodie" },
-  { versionId: "9843aef3-7b5b-4e54-9471-cae0cc63d495", name: "Brand Mockup",            desc: "Logo on mugs, tees, billboards",      category: "product",  icon: "🏷️", cost: 120, imageNodeId: "9ac3b1e2-4d7f-4f10-8b2f-9e5a1c2d3e4f", thumb: BP_CDN + "thumbnail-5580a7.webp",
+  { versionId: "9843aef3-7b5b-4e54-9471-cae0cc63d495", name: "Brand Mockup",            desc: "Logo on mugs, tees, billboards",      category: "product",  icon: "🏷️", cost: 120, outputCount: 3, imageNodeId: "9ac3b1e2-4d7f-4f10-8b2f-9e5a1c2d3e4f", thumb: BP_CDN + "thumbnail-5580a7.webp",
     textNodeId: "0b5c7344-ccc2-4ee8-9003-8ad3f1a76127", textSettingName: "textVariables", textVarName: "setting1",
     textLabel: "Where to visualise", textPlaceholder: "e.g., on a coffee mug, a t-shirt, a bus stop" },
   // ── Creative ─────────────────────────────────────────────────────────────────
@@ -769,9 +770,10 @@ export function App() {
         })();
       if (!executionId) throw new Error("No execution ID returned from Blueprint API");
 
-      // Step 2 — Poll status until COMPLETE
+      // Step 2 — Poll status until COMPLETE; save completed response for gen ID extraction
       setBpStatus("Running Blueprint... (20–90s)");
       let execComplete = false;
+      let completedStatusData: any = null;
       for (let i = 0; i < 45; i++) {
         await new Promise((r) => setTimeout(r, 4000));
         try {
@@ -781,33 +783,65 @@ export function App() {
           );
           if (!statusRes.ok) continue;
           const sd = await statusRes.json();
-          const execStatus = (sd.blueprintExecution || sd).status;
-          if (execStatus === "COMPLETE" || execStatus === "COMPLETED") { execComplete = true; break; }
-          if (execStatus === "FAILED" || execStatus === "ERROR")       throw new Error("Blueprint execution failed on Leonardo's servers.");
+          console.log("[BP status]", JSON.stringify(sd).slice(0, 400));
+          const bpNode = sd.blueprintExecution || sd;
+          const execStatus = bpNode.status;
+          if (execStatus === "COMPLETE" || execStatus === "COMPLETED") {
+            execComplete = true;
+            completedStatusData = bpNode;
+            break;
+          }
+          if (execStatus === "FAILED" || execStatus === "ERROR") throw new Error("Blueprint execution failed on Leonardo's servers.");
           const remaining = (45 - i - 1) * 4;
           setBpStatus(`Running Blueprint... (~${remaining}s remaining)`);
         } catch (inner: any) {
           if (inner.message?.includes("Blueprint")) throw inner;
-          // swallow transient network errors and keep polling
         }
       }
       if (!execComplete) throw new Error("Blueprint timed out after 3 minutes. Try again.");
 
-      // Step 3 — Fetch generation IDs
+      // Step 3 — Extract generation IDs.
+      // First try the completed status payload, then fall back to /generations endpoint.
       setBpStatus("Fetching results...");
-      const genListRes = await fetch(
-        `${BACKEND_URL}/api/blueprint-execution/${executionId}/generations`,
-        { headers: buildHeaders() }
-      );
-      if (!genListRes.ok) throw new Error("Couldn't retrieve Blueprint generation list");
-      const genListData = await genListRes.json();
-      const rawGens = genListData.generations || genListData;
-      const genIds: string[] = Array.isArray(rawGens)
-        ? rawGens.map((g: any) => g.id || g.generationId || g).filter(Boolean)
-        : [];
-      if (genIds.length === 0) throw new Error("Blueprint completed but returned no generation IDs");
+      function extractGenIds(obj: any): string[] {
+        if (!obj) return [];
+        // common locations: .generations[], .generatedImages[], .outputs[]
+        const candidates = [
+          ...(obj.generations || []),
+          ...(obj.generatedImages || []),
+          ...(obj.outputs || []),
+        ];
+        return candidates
+          .map((g: any) => g.id || g.generationId || g.generation_id || (typeof g === "string" ? g : null))
+          .filter(Boolean) as string[];
+      }
+      let genIds: string[] = extractGenIds(completedStatusData);
+      console.log("[BP genIds from status]", genIds);
 
-      // Step 4 — Poll each generation for image URLs
+      if (genIds.length === 0) {
+        // Fallback: dedicated /generations endpoint
+        const genListRes = await fetch(
+          `${BACKEND_URL}/api/blueprint-execution/${executionId}/generations`,
+          { headers: buildHeaders() }
+        );
+        if (genListRes.ok) {
+          const genListData = await genListRes.json();
+          console.log("[BP /generations raw]", JSON.stringify(genListData).slice(0, 600));
+          genIds = extractGenIds(genListData.blueprintExecution || genListData) ||
+                   (Array.isArray(genListData) ? genListData.map((g: any) => g.id || g.generationId).filter(Boolean) : []);
+        }
+      }
+
+      // Last resort: scrape any UUIDs from the status payload that aren't the executionId
+      if (genIds.length === 0 && completedStatusData) {
+        const uuids = JSON.stringify(completedStatusData).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) || [];
+        genIds = uuids.filter((u: string) => u !== executionId).slice(0, 10);
+        console.log("[BP genIds uuid fallback]", genIds);
+      }
+
+      if (genIds.length === 0) throw new Error("Blueprint completed but returned no generation IDs. Check browser console for debug info.");
+
+      // Step 4 — Poll each generation for image URLs, then insert to canvas
       const newImages: LibraryImage[] = [];
       for (const genId of genIds) {
         for (let i = 0; i < 30; i++) {
@@ -838,6 +872,13 @@ export function App() {
       }
 
       if (newImages.length === 0) throw new Error("Blueprint completed but produced no images");
+
+      // Insert all blueprint output images into the Canva canvas
+      setBpStatus("Adding to canvas...");
+      for (const img of newImages) {
+        try { await insertIntoCanva(img.url, img.width, img.height); } catch { /* ignore canvas errors */ }
+      }
+
       setLibraryImages((prev) => [...newImages, ...prev]);
       setShowBpPicker(false);
       setBpSourceImg(null);
@@ -1083,7 +1124,12 @@ export function App() {
                               : <span className="bp-card-icon" data-cat={bp.category}>{bp.icon}</span>
                           }
                           <span className="bp-card-name">{bp.name}</span>
-                          <span className="bp-card-desc">{bp.desc}</span>
+                          <span className="bp-card-desc">
+                            {bp.desc}
+                            {bp.outputCount && bp.outputCount > 1 && (
+                              <span className="bp-output-count">{bp.outputCount} imgs</span>
+                            )}
+                          </span>
                         </button>
                       );
                     })}
@@ -1632,8 +1678,8 @@ export function App() {
         <div className="refs-hint">Optional — guide the style or composition of the output</div>
       </div>
 
-      {/* Prompt */}
-      <div className="section">
+      {/* Prompt + Generate — sticky at bottom */}
+      <div className="generate-sticky-bar">
         <div className="prompt-header">
           <label className="label">PROMPT</label>
           <button
@@ -1649,27 +1695,27 @@ export function App() {
         {sparkError && (
           <div className="spark-error">{sparkError}</div>
         )}
-        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={4} maxLength={promptMaxLength} />
+        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={3} maxLength={promptMaxLength} />
         <div className={`char-counter ${prompt.length > promptMaxLength - 100 ? "char-counter-warn" : ""} ${prompt.length >= promptMaxLength ? "char-counter-over" : ""}`}>
           {prompt.length} / {promptMaxLength}
           {brandPrefix && <span className="brand-chars-note"> +{brandPrefix.length} brand</span>}
         </div>
+
+        {error && <div className="error-banner">{error}</div>}
+        {status && <div className="status-banner">{status}</div>}
+
+        <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
+          {isGenerating ? "Generating..." : (
+            <>
+              Generate
+              <span className="generate-cost">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/><path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                {estimateCredits(currentModel, width, height, count, quality).toLocaleString()}
+              </span>
+            </>
+          )}
+        </button>
       </div>
-
-      {error && <div className="error-banner">{error}</div>}
-      {status && <div className="status-banner">{status}</div>}
-
-      <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
-        {isGenerating ? "Generating..." : (
-          <>
-            Generate
-            <span className="generate-cost">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/><path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              {estimateCredits(currentModel, width, height, count, quality).toLocaleString()}
-            </span>
-          </>
-        )}
-      </button>
 
       {/* Magic Layers concept button — hidden until an image has been generated */}
       <button className={`magic-layers-btn ${previewUrls.length > 0 ? "ml-visible" : "ml-hidden"}`} onClick={() => setShowMagicLayers(true)}>

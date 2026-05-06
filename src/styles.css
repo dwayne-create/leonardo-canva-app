@@ -1841,6 +1841,31 @@ body {
   color: #00C4CC;
 }
 
+/* ── Sticky generate bar ──────────────────────────────────────── */
+.generate-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 8px;
+}
+
+/* ── Blueprint output count pill on card ─────────────────────── */
+.bp-output-count {
+  display: inline-block;
+  margin-left: 5px;
+  background: rgba(110, 96, 238, 0.25);
+  color: #a89bf5;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
+
 /* ── Blueprint picker modal ─────────────────────────────────── */
 .bp-picker-modal {
   width: calc(100% - 32px);
