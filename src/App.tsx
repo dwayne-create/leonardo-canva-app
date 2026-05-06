@@ -1442,7 +1442,7 @@ export function App() {
                 <div key={img.id} className="library-item">
                   <div className="library-thumb-wrap">
                     <img src={img.url} alt={img.prompt} className="library-thumb" title={img.prompt} />
-                    {img.isBlueprintOutput && <span className="bp-label">✦ Blueprint</span>}
+                    {(img.isBlueprintOutput || img.prompt?.startsWith('[')) && <span className="bp-label">✦ Blueprint</span>}
                     <div className="library-thumb-actions">
                       <button
                         className="library-action-btn library-bp-btn"

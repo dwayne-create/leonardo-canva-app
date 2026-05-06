@@ -819,24 +819,31 @@ app.get("/api/blueprint-execution/:id/generations", async (req, res) => {
   }
 });
 
-// List blueprints with thumbnails — paginates through ALL pages server-side
-// so the frontend gets the full picture in one shot.
+// List blueprints with thumbnails — paginates through ALL pages server-side.
+// The API uses a cursor passed as ?after=<base64>. Base64 must NOT be
+// percent-encoded — pass the raw cursor string in the query.
 app.get("/api/blueprint-list", async (req, res) => {
   const apiKey = resolveKey(req);
   try {
     const allEdges = [];
     let cursor = null;
-    const MAX_PAGES = 10; // up to 100 blueprints total
+    const MAX_PAGES = 15; // up to ~150 blueprints
 
     for (let page = 0; page < MAX_PAGES; page++) {
+      // Append cursor raw — the base64 chars the API uses (+, =, /) must not be encoded
       const url = cursor
-        ? `${LEONARDO_BASE}/blueprints?after=${encodeURIComponent(cursor)}`
+        ? `${LEONARDO_BASE}/blueprints?after=${cursor}`
         : `${LEONARDO_BASE}/blueprints`;
 
       const r = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
-      if (!r.ok) break; // stop on error, return what we have
+      const text = await r.text();
 
-      const data = await r.json();
+      // Detect GraphQL-level errors (HTTP 200 but body is an error array/object)
+      if (text.startsWith('[') || text.includes('"errors"')) break;
+
+      let data;
+      try { data = JSON.parse(text); } catch { break; }
+
       const edges = data?.blueprints?.edges;
       if (!Array.isArray(edges) || edges.length === 0) break;
 
