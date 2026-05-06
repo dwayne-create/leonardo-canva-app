@@ -1087,7 +1087,7 @@ export function App() {
 
   return (
     <div className="app">
-      <div className="app-scroll">
+      <div className="app-inner">
 
       {/* Library reference picker modal */}
       {showLibPicker && (
@@ -1820,10 +1820,8 @@ export function App() {
       </div>
       </>
       )}
-      </div>{/* end .app-scroll */}
-
       {tab === "generate" && (
-        <div className="generate-sticky-bar">
+        <div className="prompt-section">
           <div className="prompt-header">
             <label className="label">PROMPT</label>
             <button
@@ -1861,6 +1859,7 @@ export function App() {
           </button>
         </div>
       )}
+      </div>{/* end .app-scroll */}
     </div>
   );
 }

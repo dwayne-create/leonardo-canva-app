@@ -11,15 +11,6 @@ body {
 }
 
 .app {
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-scroll {
-  flex: 1;
-  overflow-y: auto;
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -1850,12 +1841,10 @@ body {
 }
 
 /* ── Sticky generate bar ──────────────────────────────────────── */
-.generate-sticky-bar {
-  flex-shrink: 0;
-  background: var(--bg, #fff);
-  padding: 10px 12px 12px;
-  border-top: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+.prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 /* ── Blueprint output count pill on card ─────────────────────── */
