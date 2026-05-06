@@ -228,13 +228,20 @@ async function insertIntoCanva(url: string, width: number, height: number) {
   // Route Leonardo CDN URLs through our proxy so Canva can fetch them without
   // hitting CORS restrictions or S3 signed-URL expiry on the client side.
   const proxyUrl = `${BACKEND_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+
+  // Detect MIME type from URL extension (BP outputs can be PNG, not just JPEG)
+  const urlPath = url.toLowerCase().split("?")[0]; // strip query params / signed tokens
+  const mimeType: "image/jpeg" | "image/png" | "image/webp" =
+    urlPath.endsWith(".png")  ? "image/png"  :
+    urlPath.endsWith(".webp") ? "image/webp" : "image/jpeg";
+
   const asset = await upload({
     type: "image",
-    mimeType: "image/jpeg",
+    mimeType,
     url: proxyUrl,
     thumbnailUrl: proxyUrl,
-    width,
-    height,
+    width:  width  || 512,
+    height: height || 512,
     aiDisclosure: "app_generated",
   });
   // Try cursor-based insertion first (works in documents)
@@ -695,7 +702,31 @@ export function App() {
   const handleLibraryAddToSlide = async (img: LibraryImage) => {
     setLibraryAddingId(img.id);
     try {
-      await insertIntoCanva(img.url, img.width, img.height);
+      let { url, width, height } = img;
+
+      // For Blueprint outputs, signed CDN URLs can expire before the user clicks
+      // "+ Add to slide". Re-fetch the generation to get a guaranteed-fresh URL.
+      if (img.isBlueprintOutput && img.generationId) {
+        try {
+          const freshRes = await fetch(`${BACKEND_URL}/api/generation/${img.generationId}`, {
+            headers: buildHeaders(),
+          });
+          if (freshRes.ok) {
+            const freshData = await freshRes.json();
+            const gen = freshData.generations_by_pk;
+            const freshImg =
+              gen?.generated_images?.find((g: any) => g.id === img.id) ||
+              gen?.generated_images?.[0];
+            if (freshImg?.url) {
+              url    = freshImg.url;
+              width  = freshImg.width  || width;
+              height = freshImg.height || height;
+            }
+          }
+        } catch { /* fall back to stored URL */ }
+      }
+
+      await insertIntoCanva(url, width, height);
     } catch (err: any) {
       setLibraryError("Couldn't add to slide: " + err.message);
     } finally {
@@ -881,7 +912,11 @@ export function App() {
       // Insert all blueprint output images into the Canva canvas
       setBpStatus("Adding to canvas...");
       for (const img of newImages) {
-        try { await insertIntoCanva(img.url, img.width, img.height); } catch { /* ignore canvas errors */ }
+        try {
+          await insertIntoCanva(img.url, img.width, img.height);
+        } catch (canvasErr: any) {
+          console.warn("[BP canvas insert]", canvasErr?.message);
+        }
       }
 
       setLibraryImages((prev) => [...newImages, ...prev]);
