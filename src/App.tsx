@@ -111,7 +111,9 @@ const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 const API_KEY_STORAGE = "prism_leo_api_key";
 
 // ─── Dogfood feedback (set to false to hide the button) ──────────────────────
-const SHOW_FEEDBACK = true;
+const SHOW_FEEDBACK     = true;
+const APP_VERSION       = "3.1";                                    // bump this each release
+const APP_TOKEN         = "336df10a3ce5d1fc89991c8bea8329856efcb3d20d51ee14bb1161f8b8818689"; // shared secret
 const FEEDBACK_VIEW_URL = "https://airtable.com/appPXp57L7JiTWiPF";
 
 // Opens a URL via the Canva SDK — the only method that works inside Canva's iframe sandbox
@@ -1110,8 +1112,8 @@ export function App() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/feedback`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feedback: fbText.trim(), category: fbCategory, name: fbName.trim() }),
+        headers: { "Content-Type": "application/json", "x-app-token": APP_TOKEN },
+        body: JSON.stringify({ feedback: fbText.trim(), category: fbCategory, name: fbName.trim(), version: APP_VERSION }),
       });
       if (!res.ok) throw new Error("Submit failed");
       setFbDone(true);
@@ -1909,6 +1911,7 @@ export function App() {
           <button className="feedback-trigger-btn" onClick={() => { setShowFeedback(true); setFbDone(false); setFbError(null); }}>
             💬 Give feedback
           </button>
+          <span className="app-version-label">v{APP_VERSION}</span>
         </div>
       )}
 

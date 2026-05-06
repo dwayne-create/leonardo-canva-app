@@ -869,19 +869,27 @@ app.get("/api/blueprint-list", async (req, res) => {
 const AIRTABLE_BASE_ID  = "appPXp57L7JiTWiPF";
 const AIRTABLE_TABLE    = "Feedback";
 const AIRTABLE_PAT      = process.env.AIRTABLE_PAT;
+const APP_TOKEN         = process.env.APP_TOKEN; // shared secret — blocks unauthorised writes
 
 app.post("/api/feedback", async (req, res) => {
-  const { feedback, category, name } = req.body || {};
+  // Token gate — reject requests without the correct shared secret
+  if (APP_TOKEN && req.headers["x-app-token"] !== APP_TOKEN) {
+    return res.status(401).json({ error: "Unauthorised" });
+  }
+
+  const { feedback, category, name, version } = req.body || {};
   if (!feedback?.trim()) return res.status(400).json({ error: "feedback is required" });
   if (!AIRTABLE_PAT) return res.status(503).json({ error: "Feedback not configured" });
 
   try {
     const fields = {
-      "Feedback": feedback.trim(),
-      "Category": category || "Other",
+      "Feedback":  feedback.trim(),
+      "Category":  category || "Other",
       "Submitted": new Date().toISOString(),
+      "Status":    "Open",
     };
-    if (name?.trim()) fields["Name"] = name.trim();
+    if (name?.trim())    fields["Name"]    = name.trim();
+    if (version?.trim()) fields["Version"] = version.trim();
 
     const r = await fetch(
       `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE)}`,
@@ -889,7 +897,7 @@ app.post("/api/feedback", async (req, res) => {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${AIRTABLE_PAT}`,
-          "Content-Type": "application/json",
+          "Content-Type":  "application/json",
         },
         body: JSON.stringify({ fields }),
       }

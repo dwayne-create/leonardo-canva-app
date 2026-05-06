@@ -2040,7 +2040,14 @@ body {
 .feedback-bar {
   padding: 10px 12px 4px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
+}
+.app-version-label {
+  font-size: 10px;
+  color: #999;
+  letter-spacing: 0.03em;
 }
 
 .feedback-trigger-btn {
