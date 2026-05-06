@@ -1167,7 +1167,14 @@ export function App() {
       {showBpPicker && (
         <div className="modal-overlay" onClick={() => !bpRunning && setShowBpPicker(false)}>
           <div className="modal bp-picker-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">✦ Run a Blueprint</div>
+            <div className="modal-title">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight: 7, verticalAlign: 'middle', color: '#6E60EE', flexShrink: 0}}>
+                <path d="M16.7696 16.7696H8.56445V18.0004H18.0004V8.56445H16.7696V16.7696Z" fill="currentColor"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M15.7436 2C14.4974 2 13.4872 3.01023 13.4872 4.25641C13.4872 4.65554 13.5922 5.02968 13.774 5.35497L5.35577 13.7732C5.03042 13.5913 4.65565 13.4872 4.25641 13.4872C3.01023 13.4872 2 14.4974 2 15.7436C2 16.9898 3.01023 18 4.25641 18C5.50259 18 6.51282 16.9898 6.51282 15.7436C6.51282 15.344 6.40821 14.969 6.22596 14.6434L14.6442 6.22516C14.9697 6.40731 15.3441 6.51282 15.7436 6.51282C16.9898 6.51282 18 5.50259 18 4.25641C18 3.01023 16.9898 2 15.7436 2ZM4.25641 14.7179C4.82286 14.7179 5.28205 15.1771 5.28205 15.7436C5.28205 16.31 4.82286 16.7692 4.25641 16.7692C3.68996 16.7692 3.23077 16.31 3.23077 15.7436C3.23077 15.1771 3.68996 14.7179 4.25641 14.7179ZM15.7436 3.23077C16.31 3.23077 16.7692 3.68996 16.7692 4.25641C16.7692 4.82286 16.31 5.28205 15.7436 5.28205C15.1771 5.28205 14.7179 4.82286 14.7179 4.25641C14.7179 3.68996 15.1771 3.23077 15.7436 3.23077Z" fill="currentColor"/>
+                <path d="M2 11.4359H3.23077V3.23077H11.4359V2H2V11.4359Z" fill="currentColor"/>
+              </svg>
+              Run a Blueprint
+            </div>
             <p className="bp-picker-sub">Choose an AI workflow to apply to your image.</p>
 
             <div className="bp-scroll-area">

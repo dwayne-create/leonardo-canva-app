@@ -1533,6 +1533,8 @@ body {
   font-weight: 700;
   color: #1a1a2e;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
 }
 
 .modal-body {
