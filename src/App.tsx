@@ -250,13 +250,17 @@ async function insertIntoCanva(url: string, width: number, height: number) {
     urlPath.endsWith(".png")  ? "image/png"  :
     urlPath.endsWith(".webp") ? "image/webp" : "image/jpeg";
 
+  const finalW = width  || 512;
+  const finalH = height || 512;
+  console.log(`[insertIntoCanva] ${finalW}x${finalH} mime=${mimeType} url=${url.slice(0,60)}`);
+
   const asset = await upload({
     type: "image",
     mimeType,
     url: proxyUrl,
     thumbnailUrl: proxyUrl,
-    width:  width  || 512,
-    height: height || 512,
+    width:  finalW,
+    height: finalH,
     aiDisclosure: "app_generated",
   });
   // addElementAtCursor only works in Docs and throws unsupported_page_type in
@@ -712,9 +716,12 @@ export function App() {
     try {
       let { url, width, height } = img;
 
-      // For Blueprint outputs, signed CDN URLs can expire before the user clicks
-      // "+ Add to slide". Re-fetch the generation to get a guaranteed-fresh URL.
-      if (img.isBlueprintOutput && img.generationId) {
+      // isBlueprintOutput is only set in React state — lost after a library
+      // refresh. Also detect by prompt prefix so refreshed BP images are caught.
+      const isBP = img.isBlueprintOutput || img.prompt?.startsWith("[");
+
+      // For BP images: re-fetch a guaranteed-fresh URL (signed CDN URLs expire).
+      if (isBP && img.generationId) {
         try {
           const freshRes = await fetch(`${BACKEND_URL}/api/generation/${img.generationId}`, {
             headers: buildHeaders(),
@@ -725,21 +732,19 @@ export function App() {
             const freshImg =
               gen?.generated_images?.find((g: any) => g.id === img.id) ||
               gen?.generated_images?.[0];
-            if (freshImg?.url) {
-              url    = freshImg.url;
-              // Probe actual dimensions if the API doesn't return them
-              if (freshImg.width && freshImg.height) {
-                width  = freshImg.width;
-                height = freshImg.height;
-              } else {
-                const dims = await probeImageDimensions(freshImg.url);
-                width  = dims.width  || img.width;
-                height = dims.height || img.height;
-              }
-            }
+            if (freshImg?.url) url = freshImg.url;
           }
         } catch { /* fall back to stored URL */ }
       }
+
+      // Always probe actual pixel dimensions via proxy — stored dims from old
+      // BP runs may be wrong (pre-fix code used source image dims as fallback).
+      const dims = await probeImageDimensions(url);
+      if (dims.width && dims.height) {
+        width  = dims.width;
+        height = dims.height;
+      }
+      console.log(`[library add] isBP=${isBP} probe=${dims.width}x${dims.height} stored=${img.width}x${img.height} → ${width}x${height}`);
 
       await insertIntoCanva(url, width, height);
     } catch (err: any) {
@@ -904,15 +909,19 @@ export function App() {
           const pollData = await pollRes.json();
           const gen = pollData.generations_by_pk;
           if (gen?.status === "COMPLETE") {
+            console.log("[BP gen raw]", JSON.stringify(gen.generated_images?.[0]).slice(0, 400));
             for (const img of gen.generated_images || []) {
               // Priority: API dims → probe via proxy → source image dims as last resort
               let w = img.width as number;
               let h = img.height as number;
+              console.log(`[BP dims] API: ${w}x${h}, source: ${bpSourceImg.width}x${bpSourceImg.height}, url: ${img.url?.slice(0,60)}`);
               if (!w || !h) {
                 const dims = await probeImageDimensions(img.url);
+                console.log(`[BP probe] proxy returned: ${dims.width}x${dims.height}`);
                 w = dims.width  || bpSourceImg.width;
                 h = dims.height || bpSourceImg.height;
               }
+              console.log(`[BP final] inserting at ${w}x${h}`);
               newImages.push({
                 id: img.id,
                 generationId: genId,
