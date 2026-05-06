@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@canva/asset";
 import { addElementAtPoint, editContent } from "@canva/design";
+import { requestOpenExternalUrl } from "@canva/platform";
 import "./styles.css";
 
 // ─── V2 model dimension grids ────────────────────────────────────────────────
@@ -113,16 +114,9 @@ const API_KEY_STORAGE = "prism_leo_api_key";
 const SHOW_FEEDBACK = true;
 const FEEDBACK_VIEW_URL = "https://airtable.com/appPXp57L7JiTWiPF";
 
-// Opens a URL in a new tab — works inside Canva's iframe sandbox
-// (window.open and <a target="_blank"> are both blocked; programmatic anchor click is not)
+// Opens a URL via the Canva SDK — the only method that works inside Canva's iframe sandbox
 function openLink(url: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  requestOpenExternalUrl({ url });
 }
 
 // ─── Canva Brand ─────────────────────────────────────────────────────────────
@@ -1513,7 +1507,7 @@ export function App() {
             </svg>
             <div className="logo-text-group">
               <span className="logo-text">Prism</span>
-              <a href="https://www.leonardo.ai" target="_blank" rel="noopener noreferrer" className="logo-badge">by Leonardo.AI</a>
+              <button onClick={() => openLink("https://www.leonardo.ai")} className="logo-badge">by Leonardo.AI</button>
             </div>
           </div>
           <div className="header-right">
