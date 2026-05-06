@@ -656,42 +656,34 @@ export function App() {
     if (tab === "library") fetchLibrary();
   }, [tab, fetchLibrary]);
 
-  // Fetch blueprint thumbnails from backend (only the ones not already seeded)
+  // Fetch blueprint thumbnails — match by blueprint NAME (the API has no version IDs)
   useEffect(() => {
     if (!apiKey) return;
     fetch(`${BACKEND_URL}/api/blueprint-list`, { headers: buildHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
-        // Try to build versionId → thumbnailUrl map from various response shapes
         const thumbMap: Record<string, string> = {};
-        const edges =
-          data?.blueprints?.edges ||
-          data?.blueprintVersions?.edges ||
-          (Array.isArray(data) ? data.map((n: any) => ({ node: n })) : []);
+        const edges = data?.blueprints?.edges || [];
         edges.forEach((edge: any) => {
           const node = edge?.node;
           if (!node) return;
-          // Get the thumbnail URL for this blueprint
+          const apiName: string = node.name || "";
           const thumbEntry = (node.thumbnails || []).find(
             (t: any) => t.name === "thumbnailUrl"
           );
-          const thumbUrl = thumbEntry?.url;
-          if (!thumbUrl) return;
-          // Map each version ID to this blueprint's thumbnail
-          const versions =
-            node.blueprintVersions?.edges ||
-            (Array.isArray(node.versions) ? node.versions.map((v: any) => ({ node: v })) : []);
-          versions.forEach((ve: any) => {
-            const versionId = ve?.node?.akUUID || ve?.node?.id;
-            if (versionId) thumbMap[versionId] = thumbUrl;
-          });
+          const thumbUrl: string | undefined = thumbEntry?.url;
+          if (!thumbUrl || !apiName) return;
+          // Match by exact name to our curated list
+          const bp = CURATED_BLUEPRINTS.find((b) => b.name === apiName);
+          if (bp) thumbMap[bp.versionId] = thumbUrl;
         });
         if (Object.keys(thumbMap).length > 0) {
-          setBpThumbs((prev) => ({ ...thumbMap, ...prev })); // prev (hardcoded) wins
+          // hardcoded thumbs (already in prev) take precedence
+          setBpThumbs((prev) => ({ ...thumbMap, ...prev }));
         }
       })
-      .catch(() => {}); // fail silently — icon fallback already in place
+      .catch(() => {}); // fail silently — emoji fallback is in place
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey]);
 
@@ -1070,6 +1062,7 @@ export function App() {
                         <button
                           key={bp.versionId}
                           className={`bp-card ${selectedBp?.versionId === bp.versionId ? "bp-card-active" : ""}`}
+                          data-cat={bp.category}
                           onClick={() => { setSelectedBp(bp); setBpTextInput(""); setBpError(null); }}
                           disabled={bpRunning}
                         >

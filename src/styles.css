@@ -1905,8 +1905,30 @@ body {
 }
 
 .bp-card-icon {
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+  margin-bottom: 2px;
+}
+
+/* Category-tinted icon backgrounds */
+.bp-card[data-cat="relight"] .bp-card-icon {
+  background: linear-gradient(135deg, #fff8ed 0%, #fdecc8 100%);
+}
+.bp-card[data-cat="portrait"] .bp-card-icon {
+  background: linear-gradient(135deg, #f5f0ff 0%, #ede0ff 100%);
+}
+.bp-card[data-cat="product"] .bp-card-icon {
+  background: linear-gradient(135deg, #edfcf5 0%, #d1fae5 100%);
+}
+.bp-card[data-cat="creative"] .bp-card-icon {
+  background: linear-gradient(135deg, #fdf0f9 0%, #fce7f3 100%);
 }
 
 .bp-card-thumb {
@@ -1915,6 +1937,7 @@ body {
   object-fit: cover;
   border-radius: 6px;
   display: block;
+  margin-bottom: 2px;
 }
 
 .bp-card-name {
