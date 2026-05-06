@@ -1392,9 +1392,14 @@ body {
   color: #6E60EE;
 }
 
+.library-trash-btn {
+  color: #374151;
+}
+
 .library-trash-btn:hover {
   background: #fee2e2;
   border-color: #ef4444;
+  color: #ef4444;
 }
 
 /* Success flash on the library card */
@@ -1835,13 +1840,13 @@ body {
 
 /* ── Blueprint action button in library thumb-wrap ─────────── */
 .library-bp-btn {
-  color: #00C4CC;
+  color: #6E60EE;
 }
 
 .library-bp-btn:hover:not(:disabled) {
-  background: rgba(0, 196, 204, 0.12);
-  border-color: #00C4CC;
-  color: #00C4CC;
+  background: rgba(110, 96, 238, 0.1);
+  border-color: #6E60EE;
+  color: #6E60EE;
 }
 
 /* ── Sticky generate bar ──────────────────────────────────────── */
