@@ -202,7 +202,7 @@ const CURATED_BLUEPRINTS: BpDef[] = [
     textLabel: "Lighting style", textPlaceholder: "e.g., day time, cinematic soft light, golden hour" },
   // ── Portrait ─────────────────────────────────────────────────────────────────
   { versionId: "e994a1b4-db3c-4153-b5be-64eb887b5205", name: "Professional Headshot",   desc: "Studio-quality headshot",           category: "portrait", icon: "🤵", cost: 60, imageNodeId: "c7a4b2f9-8e3d-4e3b-9f0d-2c8f6d2b1a77", thumb: BP_CDN + "thumbnail-4bd97c.png" },
-  { versionId: "dfba24fe-bb6c-4d16-a48e-cec3a5472a2a", name: "Pop Art Collage Portrait", desc: "Bold pop art interpretation",       category: "portrait", icon: "🎭", cost: 60, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-cbdabb.webp" },
+  { versionId: "dfba24fe-bb6c-4d16-a48e-cec3a5472a2a", name: "Pop Art Collage Portrait", desc: "Bold pop art interpretation",       category: "portrait", icon: "🎭", cost: 60, outputCount: 3, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-cbdabb.webp" },
   { versionId: "a1936b67-902b-4099-9f3a-59ea8606bc15", name: "Indie Garden Polaroid",   desc: "Dreamy polaroid aesthetic",         category: "portrait", icon: "📷", cost: 60, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-ec02d0.webp" },
   // ── Product ──────────────────────────────────────────────────────────────────
   { versionId: "4b3f9df0-1e21-49ce-be70-8736a41dff88", name: "Product in a Dreamstate", desc: "Ethereal product placement",        category: "product",  icon: "✨", cost: 60, imageNodeId: "2356018a-7977-4934-a3e8-671a6064c8ce", thumb: BP_CDN + "thumbnail-42d7cd.webp" },
@@ -1010,6 +1010,7 @@ export function App() {
 
   return (
     <div className="app">
+      <div className="app-scroll">
 
       {/* Library reference picker modal */}
       {showLibPicker && (
@@ -1673,48 +1674,6 @@ export function App() {
         <div className="refs-hint">Optional — guide the style or composition of the output</div>
       </div>
 
-      {/* Spacer so fixed bar doesn't cover content above */}
-      <div className="generate-bar-spacer" />
-
-      {/* Prompt + Generate — fixed at bottom */}
-      <div className="generate-sticky-bar">
-        <div className="prompt-header">
-          <label className="label">PROMPT</label>
-          <button
-            className={`spark-btn ${sparkLoading ? "spark-btn-loading" : ""}`}
-            onClick={handleSparkPrompt}
-            disabled={isGenerating || sparkLoading}
-            title="Read your slide and generate a smart prompt with AI"
-          >
-            {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}<span className="beta-badge">beta</span>
-          </button>
-        </div>
-
-        {sparkError && (
-          <div className="spark-error">{sparkError}</div>
-        )}
-        <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={3} maxLength={promptMaxLength} />
-        <div className={`char-counter ${prompt.length > promptMaxLength - 100 ? "char-counter-warn" : ""} ${prompt.length >= promptMaxLength ? "char-counter-over" : ""}`}>
-          {prompt.length} / {promptMaxLength}
-          {brandPrefix && <span className="brand-chars-note"> +{brandPrefix.length} brand</span>}
-        </div>
-
-        {error && <div className="error-banner">{error}</div>}
-        {status && <div className="status-banner">{status}</div>}
-
-        <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
-          {isGenerating ? "Generating..." : (
-            <>
-              Generate
-              <span className="generate-cost">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/><path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                {estimateCredits(currentModel, width, height, count, quality).toLocaleString()}
-              </span>
-            </>
-          )}
-        </button>
-      </div>
-
       {/* Magic Layers concept button — hidden until an image has been generated */}
       <button className={`magic-layers-btn ${previewUrls.length > 0 ? "ml-visible" : "ml-hidden"}`} onClick={() => setShowMagicLayers(true)}>
         <span className="ml-btn-text">Create Magic Layers</span>
@@ -1768,6 +1727,47 @@ export function App() {
         </svg>
       </div>
       </>
+      )}
+      </div>{/* end .app-scroll */}
+
+      {tab === "generate" && (
+        <div className="generate-sticky-bar">
+          <div className="prompt-header">
+            <label className="label">PROMPT</label>
+            <button
+              className={`spark-btn ${sparkLoading ? "spark-btn-loading" : ""}`}
+              onClick={handleSparkPrompt}
+              disabled={isGenerating || sparkLoading}
+              title="Read your slide and generate a smart prompt with AI"
+            >
+              {sparkLoading ? "✨ Sparking..." : "✨ Spark Prompt"}<span className="beta-badge">beta</span>
+            </button>
+          </div>
+
+          {sparkError && (
+            <div className="spark-error">{sparkError}</div>
+          )}
+          <textarea className="prompt-textarea" placeholder="Describe the image you want to create..." value={prompt} onChange={(e) => setPrompt(e.target.value)} disabled={isGenerating} rows={3} maxLength={promptMaxLength} />
+          <div className={`char-counter ${prompt.length > promptMaxLength - 100 ? "char-counter-warn" : ""} ${prompt.length >= promptMaxLength ? "char-counter-over" : ""}`}>
+            {prompt.length} / {promptMaxLength}
+            {brandPrefix && <span className="brand-chars-note"> +{brandPrefix.length} brand</span>}
+          </div>
+
+          {error && <div className="error-banner">{error}</div>}
+          {status && <div className="status-banner">{status}</div>}
+
+          <button className={`generate-btn ${isGenerating ? "loading" : ""}`} onClick={handleGenerate} disabled={isGenerating || !prompt.trim() || dimErrors.length > 0}>
+            {isGenerating ? "Generating..." : (
+              <>
+                Generate
+                <span className="generate-cost">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/><path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  {estimateCredits(currentModel, width, height, count, quality).toLocaleString()}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
