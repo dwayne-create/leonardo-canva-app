@@ -1087,7 +1087,7 @@ export function App() {
 
   return (
     <div className="app">
-      <div>
+      <div className="app-scroll">
 
       {/* Library reference picker modal */}
       {showLibPicker && (
@@ -1350,7 +1350,7 @@ export function App() {
                   <path d="M22.5 8l1 1 2-2" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <div>
+              <div className="app-scroll">
                 <div className="ml-modal-title">Magic Layers</div>
                 <div className="ml-modal-badge">Concept · Coming Soon</div>
               </div>

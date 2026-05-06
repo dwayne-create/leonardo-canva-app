@@ -11,6 +11,10 @@ body {
 }
 
 .app {
+  /* outer shell — no layout, just a mount point */
+}
+
+.app-scroll {
   padding: 12px;
   display: flex;
   flex-direction: column;
