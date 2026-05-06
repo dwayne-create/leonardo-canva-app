@@ -819,8 +819,24 @@ app.get("/api/blueprint-execution/:id/generations", async (req, res) => {
   }
 });
 
+// List blueprints with thumbnails (used by frontend to populate BP card images)
+app.get("/api/blueprint-list", async (req, res) => {
+  const apiKey = resolveKey(req);
+  try {
+    // The blueprints endpoint returns pages of blueprints with their versions and thumbnails
+    const r = await fetch(`${LEONARDO_BASE}/blueprints?limit=100`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-43", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-44", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);

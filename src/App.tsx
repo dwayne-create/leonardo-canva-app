@@ -178,39 +178,44 @@ interface BpDef {
   imageNodeId: string;
   textNodeId?: string;
   textSettingName?: string;
+  textVarName?: string;   // variable name inside textVariables array
   textLabel?: string;
   textPlaceholder?: string;
+  thumb?: string;         // CDN thumbnail URL (confirmed)
+  cost: number;           // estimated credits per execution
 }
 
+const BP_CDN = "https://cdn.leonardo.ai/blueprint_assets/official/384ab5c8-55d8-47a1-be22-6a274913c324/thumbnails/";
+
 const CURATED_BLUEPRINTS: BpDef[] = [
-  // Relighting
-  { versionId: "04ed2d4b-c28a-4002-b712-bbc89cee592e", name: "Golden Hour Relight",        desc: "Warm late-afternoon glow",              category: "relight",  icon: "🌅", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "ac9941ef-c88a-477e-a93e-6c07552aa41b", name: "Warm Relight",                desc: "Soft warm tones",                       category: "relight",  icon: "🕯️", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "d38ef3ce-3389-408f-a529-43a2a0b02816", name: "Tungsten Moon Relight",       desc: "Moody tungsten night light",            category: "relight",  icon: "🌙", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "84d68b07-a2d5-49ed-9638-e62cafe8cd95", name: "Dappled Sunlight Relight",    desc: "Natural light through leaves",          category: "relight",  icon: "🌿", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "b921c2cd-119b-4d9c-8ac4-af2ad1420fa0", name: "Cool Sunrise Relight",        desc: "Cool blue dawn light",                  category: "relight",  icon: "🌄", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "45801e6b-223e-42d9-b4a5-2c5792035e45", name: "Soft Azure Relight",          desc: "Soft azure studio light",               category: "relight",  icon: "💙", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "7f50625c-2f97-47df-8890-83d85142e953", name: "Custom Relight",              desc: "Describe your own lighting",            category: "relight",  icon: "💡", imageNodeId: "1e4c5aa9-8d0e-4d92-b3b4-1abe4f25ad32",
-    textNodeId: "d4e1ba8e-b20e-4e21-a3af-0cb759111973", textSettingName: "textVariables",
+  // ── Relighting ───────────────────────────────────────────────────────────────
+  { versionId: "04ed2d4b-c28a-4002-b712-bbc89cee592e", name: "Golden Hour Relight",     desc: "Warm late-afternoon glow",          category: "relight",  icon: "🌅", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-739176.webp" },
+  { versionId: "ac9941ef-c88a-477e-a93e-6c07552aa41b", name: "Warm Relight",             desc: "Soft warm tones",                   category: "relight",  icon: "🕯️", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "d38ef3ce-3389-408f-a529-43a2a0b02816", name: "Tungsten Moon Relight",    desc: "Moody tungsten night light",        category: "relight",  icon: "🌙", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "84d68b07-a2d5-49ed-9638-e62cafe8cd95", name: "Dappled Sunlight Relight", desc: "Natural light through leaves",      category: "relight",  icon: "🌿", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "b921c2cd-119b-4d9c-8ac4-af2ad1420fa0", name: "Cool Sunrise Relight",     desc: "Cool blue dawn light",              category: "relight",  icon: "🌄", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "45801e6b-223e-42d9-b4a5-2c5792035e45", name: "Soft Azure Relight",       desc: "Soft azure studio light",           category: "relight",  icon: "💙", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "7f50625c-2f97-47df-8890-83d85142e953", name: "Custom Relight",           desc: "Describe your own lighting",        category: "relight",  icon: "💡", cost: 40, imageNodeId: "1e4c5aa9-8d0e-4d92-b3b4-1abe4f25ad32",
+    textNodeId: "d4e1ba8e-b20e-4e21-a3af-0cb759111973", textSettingName: "textVariables", textVarName: "lighting",
     textLabel: "Lighting style", textPlaceholder: "e.g., day time, cinematic soft light, golden hour" },
-  // Portrait
-  { versionId: "e994a1b4-db3c-4153-b5be-64eb887b5205", name: "Professional Headshot",       desc: "Studio-quality headshot",               category: "portrait", icon: "🤵", imageNodeId: "c7a4b2f9-8e3d-4e3b-9f0d-2c8f6d2b1a77" },
-  { versionId: "dfba24fe-bb6c-4d16-a48e-cec3a5472a2a", name: "Pop Art Collage Portrait",    desc: "Bold pop art interpretation",           category: "portrait", icon: "🎭", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  { versionId: "a1936b67-902b-4099-9f3a-59ea8606bc15", name: "Indie Garden Polaroid",       desc: "Dreamy polaroid aesthetic",             category: "portrait", icon: "📷", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
-  // Product
-  { versionId: "4b3f9df0-1e21-49ce-be70-8736a41dff88", name: "Product in a Dreamstate",    desc: "Ethereal product placement",            category: "product",  icon: "✨", imageNodeId: "2356018a-7977-4934-a3e8-671a6064c8ce" },
-  { versionId: "0ea4cdc3-0ceb-4728-a2a4-d0a8ba50d042", name: "At-Home Product Shoot",      desc: "Natural lifestyle product photos",      category: "product",  icon: "🏠", imageNodeId: "8e6c9f12-3b5a-4f8d-9c21-7a34b2d5c6e9" },
-  { versionId: "8c1bdc37-6986-4d9b-ab6e-acfd123d51b2", name: "Merch Mock Up",              desc: "T-shirt, mug, tote & more",             category: "product",  icon: "👕", imageNodeId: "414b2497-5dbc-4f47-a2b4-802f8a30603a",
-    textNodeId: "4b960270-b613-4708-920c-0feabc104325", textSettingName: "textVariables",
+  // ── Portrait ─────────────────────────────────────────────────────────────────
+  { versionId: "e994a1b4-db3c-4153-b5be-64eb887b5205", name: "Professional Headshot",   desc: "Studio-quality headshot",           category: "portrait", icon: "🤵", cost: 60, imageNodeId: "c7a4b2f9-8e3d-4e3b-9f0d-2c8f6d2b1a77" },
+  { versionId: "dfba24fe-bb6c-4d16-a48e-cec3a5472a2a", name: "Pop Art Collage Portrait", desc: "Bold pop art interpretation",       category: "portrait", icon: "🎭", cost: 60, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "a1936b67-902b-4099-9f3a-59ea8606bc15", name: "Indie Garden Polaroid",   desc: "Dreamy polaroid aesthetic",         category: "portrait", icon: "📷", cost: 60, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  // ── Product ──────────────────────────────────────────────────────────────────
+  { versionId: "4b3f9df0-1e21-49ce-be70-8736a41dff88", name: "Product in a Dreamstate", desc: "Ethereal product placement",        category: "product",  icon: "✨", cost: 60, imageNodeId: "2356018a-7977-4934-a3e8-671a6064c8ce", thumb: BP_CDN + "thumbnail-42d7cd.webp" },
+  { versionId: "0ea4cdc3-0ceb-4728-a2a4-d0a8ba50d042", name: "At-Home Product Shoot",  desc: "Natural lifestyle product photos",  category: "product",  icon: "🏠", cost: 60, imageNodeId: "8e6c9f12-3b5a-4f8d-9c21-7a34b2d5c6e9" },
+  { versionId: "8c1bdc37-6986-4d9b-ab6e-acfd123d51b2", name: "Merch Mock Up",           desc: "T-shirt, mug, tote & more",         category: "product",  icon: "👕", cost: 60, imageNodeId: "414b2497-5dbc-4f47-a2b4-802f8a30603a",
+    textNodeId: "4b960270-b613-4708-920c-0feabc104325", textSettingName: "textVariables", textVarName: "products",
     textLabel: "Products", textPlaceholder: "e.g., t-shirt, mug, tote bag, hoodie" },
-  // Creative
-  { versionId: "c1039dee-79e6-44a7-8b29-d96a8ba3b2e6", name: "Old Photo Restoration",      desc: "Restore old & damaged photos",          category: "creative", icon: "🕰️", imageNodeId: "b2e7ac51-5d0b-43cf-b865-bb3c1a8fa6e7" },
-  { versionId: "407530d5-7482-43ff-9784-e8b7fa7c3049", name: "Multiview Perspective",       desc: "Multiple angles, one shot",             category: "creative", icon: "🔄", imageNodeId: "fae3b7c2-1d4a-4c6b-8e29-9f0a1b2c3d4e" },
-  { versionId: "41b0fcc4-01e2-421f-99ed-c38454f1e59c", name: "Image Touch Up",              desc: "Micro-fix specific issues",             category: "creative", icon: "✏️", imageNodeId: "31bba0c1-73a1-4666-92ef-80f7bb0318cd",
-    textNodeId: "d7c81df7-4d96-4edd-af69-a6b468ec5a5e", textSettingName: "textVariables",
+  // ── Creative ─────────────────────────────────────────────────────────────────
+  { versionId: "c1039dee-79e6-44a7-8b29-d96a8ba3b2e6", name: "Old Photo Restoration",   desc: "Restore old & damaged photos",      category: "creative", icon: "🕰️", cost: 50, imageNodeId: "b2e7ac51-5d0b-43cf-b865-bb3c1a8fa6e7", thumb: BP_CDN + "thumbnail-c3ca78.webp" },
+  { versionId: "407530d5-7482-43ff-9784-e8b7fa7c3049", name: "Multiview Perspective",   desc: "Multiple angles, one shot",         category: "creative", icon: "🔄", cost: 80, imageNodeId: "fae3b7c2-1d4a-4c6b-8e29-9f0a1b2c3d4e" },
+  { versionId: "41b0fcc4-01e2-421f-99ed-c38454f1e59c", name: "Image Touch Up",          desc: "Micro-fix specific issues",         category: "creative", icon: "✏️", cost: 40, imageNodeId: "31bba0c1-73a1-4666-92ef-80f7bb0318cd",
+    textNodeId: "d7c81df7-4d96-4edd-af69-a6b468ec5a5e", textSettingName: "textVariables", textVarName: "microFixes",
     textLabel: "Corrections", textPlaceholder: "e.g., clean up background edges, remove blemish, fix stray hair" },
-  { versionId: "5c09ba53-ae76-4707-89c0-f8f3a3efe297", name: "Background Change",           desc: "Replace the background",                category: "creative", icon: "🖼️", imageNodeId: "7c5f47de-4c34-4c0d-a2ba-4add39f639ae",
-    textNodeId: "1b2fc1de-2c60-4da3-8ef8-dc4b42f3c922", textSettingName: "textVariables",
+  { versionId: "5c09ba53-ae76-4707-89c0-f8f3a3efe297", name: "Background Change",       desc: "Replace the background",            category: "creative", icon: "🖼️", cost: 50, imageNodeId: "7c5f47de-4c34-4c0d-a2ba-4add39f639ae",
+    textNodeId: "1b2fc1de-2c60-4da3-8ef8-dc4b42f3c922", textSettingName: "textVariables", textVarName: "background",
     textLabel: "New background", textPlaceholder: "e.g., gradient blue, mountain landscape, city skyline" },
 ];
 
@@ -308,6 +313,13 @@ export function App() {
   const [bpRunning,    setBpRunning]     = useState(false);
   const [bpStatus,     setBpStatus]      = useState<string | null>(null);
   const [bpError,      setBpError]       = useState<string | null>(null);
+  // versionId → CDN thumbnail URL fetched from backend on mount
+  const [bpThumbs,     setBpThumbs]      = useState<Record<string, string>>(() => {
+    // Seed with known confirmed thumbnails so they show immediately
+    const seed: Record<string, string> = {};
+    CURATED_BLUEPRINTS.forEach((bp) => { if (bp.thumb) seed[bp.versionId] = bp.thumb; });
+    return seed;
+  });
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -644,6 +656,45 @@ export function App() {
     if (tab === "library") fetchLibrary();
   }, [tab, fetchLibrary]);
 
+  // Fetch blueprint thumbnails from backend (only the ones not already seeded)
+  useEffect(() => {
+    if (!apiKey) return;
+    fetch(`${BACKEND_URL}/api/blueprint-list`, { headers: buildHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        // Try to build versionId → thumbnailUrl map from various response shapes
+        const thumbMap: Record<string, string> = {};
+        const edges =
+          data?.blueprints?.edges ||
+          data?.blueprintVersions?.edges ||
+          (Array.isArray(data) ? data.map((n: any) => ({ node: n })) : []);
+        edges.forEach((edge: any) => {
+          const node = edge?.node;
+          if (!node) return;
+          // Get the thumbnail URL for this blueprint
+          const thumbEntry = (node.thumbnails || []).find(
+            (t: any) => t.name === "thumbnailUrl"
+          );
+          const thumbUrl = thumbEntry?.url;
+          if (!thumbUrl) return;
+          // Map each version ID to this blueprint's thumbnail
+          const versions =
+            node.blueprintVersions?.edges ||
+            (Array.isArray(node.versions) ? node.versions.map((v: any) => ({ node: v })) : []);
+          versions.forEach((ve: any) => {
+            const versionId = ve?.node?.akUUID || ve?.node?.id;
+            if (versionId) thumbMap[versionId] = thumbUrl;
+          });
+        });
+        if (Object.keys(thumbMap).length > 0) {
+          setBpThumbs((prev) => ({ ...thumbMap, ...prev })); // prev (hardcoded) wins
+        }
+      })
+      .catch(() => {}); // fail silently — icon fallback already in place
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey]);
+
   const handleLibraryAddToSlide = async (img: LibraryImage) => {
     setLibraryAddingId(img.id);
     try {
@@ -685,14 +736,15 @@ export function App() {
     setBpStatus("Starting Blueprint...");
     try {
       // Build nodeInputs array
-      const nodeInputs: { nodeId: string; settingName: string; value: string }[] = [
+      const nodeInputs: { nodeId: string; settingName: string; value: any }[] = [
         { nodeId: selectedBp.imageNodeId, settingName: "imageUrl", value: bpSourceImg.url },
       ];
       if (selectedBp.textNodeId && bpTextInput.trim()) {
         nodeInputs.push({
           nodeId: selectedBp.textNodeId,
-          settingName: selectedBp.textSettingName!,
-          value: bpTextInput.trim(),
+          settingName: "textVariables",
+          // textVariables expects an array: [{ name: varName, value: text }]
+          value: [{ name: selectedBp.textVarName || "text", value: bpTextInput.trim() }],
         });
       }
 
@@ -707,7 +759,9 @@ export function App() {
         throw new Error(e.error || `Execute error ${execRes.status}`);
       }
       const execData = await execRes.json();
+      // The API wraps the result: { blueprintExecution: { akUUID: "...", ... } }
       const executionId =
+        execData.blueprintExecution?.akUUID ||
         execData.id ||
         execData.blueprintExecutionId ||
         execData.blueprintExecution?.id;
@@ -726,8 +780,8 @@ export function App() {
           if (!statusRes.ok) continue;
           const sd = await statusRes.json();
           const execStatus = (sd.blueprintExecution || sd).status;
-          if (execStatus === "COMPLETE") { execComplete = true; break; }
-          if (execStatus === "FAILED")   throw new Error("Blueprint execution failed on Leonardo's servers.");
+          if (execStatus === "COMPLETE" || execStatus === "COMPLETED") { execComplete = true; break; }
+          if (execStatus === "FAILED" || execStatus === "ERROR")       throw new Error("Blueprint execution failed on Leonardo's servers.");
           const remaining = (45 - i - 1) * 4;
           setBpStatus(`Running Blueprint... (~${remaining}s remaining)`);
         } catch (inner: any) {
@@ -1010,18 +1064,24 @@ export function App() {
                 <div key={cat} className="bp-category">
                   <div className="bp-category-label">{catLabel[cat]}</div>
                   <div className="bp-card-grid">
-                    {catBPs.map((bp) => (
-                      <button
-                        key={bp.versionId}
-                        className={`bp-card ${selectedBp?.versionId === bp.versionId ? "bp-card-active" : ""}`}
-                        onClick={() => { setSelectedBp(bp); setBpTextInput(""); setBpError(null); }}
-                        disabled={bpRunning}
-                      >
-                        <span className="bp-card-icon">{bp.icon}</span>
-                        <span className="bp-card-name">{bp.name}</span>
-                        <span className="bp-card-desc">{bp.desc}</span>
-                      </button>
-                    ))}
+                    {catBPs.map((bp) => {
+                      const thumbUrl = bpThumbs[bp.versionId];
+                      return (
+                        <button
+                          key={bp.versionId}
+                          className={`bp-card ${selectedBp?.versionId === bp.versionId ? "bp-card-active" : ""}`}
+                          onClick={() => { setSelectedBp(bp); setBpTextInput(""); setBpError(null); }}
+                          disabled={bpRunning}
+                        >
+                          {thumbUrl
+                            ? <img src={thumbUrl} alt={bp.name} className="bp-card-thumb" />
+                            : <span className="bp-card-icon">{bp.icon}</span>
+                          }
+                          <span className="bp-card-name">{bp.name}</span>
+                          <span className="bp-card-desc">{bp.desc}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -1045,16 +1105,25 @@ export function App() {
             {bpError  && <div className="bp-error">{bpError}</div>}
             {bpStatus && <div className="status-banner" style={{ marginTop: 8 }}>{bpStatus}</div>}
 
-            <div className="modal-actions" style={{ marginTop: 12 }}>
-              <button className="modal-cancel" onClick={() => setShowBpPicker(false)} disabled={bpRunning}>Cancel</button>
+            <div className="modal-actions" style={{ marginTop: 12, flexDirection: "column", gap: 8 }}>
               <button
                 className={`generate-btn ${bpRunning ? "loading" : ""}`}
-                style={{ flex: 1, padding: "10px", fontSize: "13px" }}
+                style={{ width: "100%", padding: "11px", fontSize: "13px" }}
                 onClick={handleRunBlueprint}
                 disabled={bpRunning || !selectedBp || (!!selectedBp?.textNodeId && !bpTextInput.trim())}
               >
-                {bpRunning ? "Running..." : "✦ Run Blueprint"}
+                {bpRunning
+                  ? "Running..."
+                  : selectedBp
+                    ? `✦ Run Blueprint · ~${selectedBp.cost} credits`
+                    : "✦ Run Blueprint"}
               </button>
+              <button
+                className="modal-cancel"
+                style={{ width: "100%", textAlign: "center" }}
+                onClick={() => setShowBpPicker(false)}
+                disabled={bpRunning}
+              >Cancel</button>
             </div>
           </div>
         </div>

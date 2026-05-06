@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@canva/asset": "^2.0.0",
-    "@canva/design": "^2.0.0",
-    "@canva/platform": "^2.0.0",
+    "@canva/design": "^2.8.0",
+    "@canva/platform": "^2.2.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
