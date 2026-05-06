@@ -865,6 +865,43 @@ app.get("/api/blueprint-list", async (req, res) => {
   }
 });
 
+// ─── Dogfood feedback → Airtable ─────────────────────────────────────────────
+const AIRTABLE_BASE_ID  = "appPXp57L7JiTWiPF";
+const AIRTABLE_TABLE    = "Feedback";
+const AIRTABLE_PAT      = process.env.AIRTABLE_PAT;
+
+app.post("/api/feedback", async (req, res) => {
+  const { feedback, category, name } = req.body || {};
+  if (!feedback?.trim()) return res.status(400).json({ error: "feedback is required" });
+  if (!AIRTABLE_PAT) return res.status(503).json({ error: "Feedback not configured" });
+
+  try {
+    const fields = {
+      "Feedback": feedback.trim(),
+      "Category": category || "Other",
+      "Submitted": new Date().toISOString(),
+    };
+    if (name?.trim()) fields["Name"] = name.trim();
+
+    const r = await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE)}`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${AIRTABLE_PAT}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fields }),
+      }
+    );
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error?.message || "Airtable error");
+    res.json({ ok: true, id: data.id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Health check ────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-44", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 

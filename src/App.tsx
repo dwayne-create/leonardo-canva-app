@@ -109,6 +109,10 @@ interface LibraryImage {
 const BACKEND_URL = "https://leonardo-canva-app.onrender.com";
 const API_KEY_STORAGE = "prism_leo_api_key";
 
+// ─── Dogfood feedback (set to false to hide the button) ──────────────────────
+const SHOW_FEEDBACK = true;
+const FEEDBACK_VIEW_URL = "https://airtable.com/appPXp57L7JiTWiPF";
+
 // ─── Canva Brand ─────────────────────────────────────────────────────────────
 // Logo URLs — served by our backend so Canva's asset uploader can fetch them
 const CANVA_LOGO_WORDMARK_GRADIENT_URL = `${BACKEND_URL}/api/logo/wordmark-gradient`;
@@ -420,6 +424,14 @@ export function App() {
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [deletingId, setDeletingId]             = useState<string | null>(null);
 
+  // Feedback
+  const [showFeedback,      setShowFeedback]      = useState(false);
+  const [fbCategory,        setFbCategory]        = useState<"Functionality" | "Other">("Functionality");
+  const [fbText,            setFbText]            = useState("");
+  const [fbName,            setFbName]            = useState("");
+  const [fbSubmitting,      setFbSubmitting]      = useState(false);
+  const [fbDone,            setFbDone]            = useState(false);
+  const [fbError,           setFbError]           = useState<string | null>(null);
 
   const currentModel = MODELS.find((m) => m.id === modelId)!;
 
@@ -1082,6 +1094,27 @@ export function App() {
       setError("Couldn't add to slide: " + err.message);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!fbText.trim()) return;
+    setFbSubmitting(true);
+    setFbError(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedback: fbText.trim(), category: fbCategory, name: fbName.trim() }),
+      });
+      if (!res.ok) throw new Error("Submit failed");
+      setFbDone(true);
+      setFbText("");
+      setFbName("");
+    } catch (e: any) {
+      setFbError("Couldn't submit — please try again.");
+    } finally {
+      setFbSubmitting(false);
     }
   };
 
@@ -1864,7 +1897,78 @@ export function App() {
           </button>
         </div>
       )}
+      {/* ── Dogfood feedback button ─────────────────────────────────── */}
+      {SHOW_FEEDBACK && (
+        <div className="feedback-bar">
+          <button className="feedback-trigger-btn" onClick={() => { setShowFeedback(true); setFbDone(false); setFbError(null); }}>
+            💬 Give feedback
+          </button>
+        </div>
+      )}
+
       </div>{/* end .app-scroll */}
+
+      {/* ── Feedback modal ───────────────────────────────────────────── */}
+      {SHOW_FEEDBACK && showFeedback && (
+        <div className="modal-overlay" onClick={() => setShowFeedback(false)}>
+          <div className="modal feedback-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">💬 Share feedback</div>
+            <p className="feedback-modal-sub">Help us improve Prism — this goes straight to the team.</p>
+
+            {fbDone ? (
+              <div className="feedback-done">
+                <div className="feedback-done-icon">✓</div>
+                <p>Thanks! Your feedback was submitted.</p>
+                <a href={FEEDBACK_VIEW_URL} target="_blank" rel="noreferrer" className="feedback-view-link">See all feedback →</a>
+                <button className="feedback-close-btn" onClick={() => setShowFeedback(false)}>Close</button>
+              </div>
+            ) : (
+              <>
+                <div className="feedback-category-row">
+                  {(["Functionality", "Other"] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      className={`feedback-cat-chip ${fbCategory === cat ? "feedback-cat-active" : ""}`}
+                      onClick={() => setFbCategory(cat)}
+                    >{cat}</button>
+                  ))}
+                </div>
+
+                <textarea
+                  className="feedback-textarea"
+                  placeholder="What's on your mind?"
+                  value={fbText}
+                  onChange={(e) => setFbText(e.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                />
+
+                <input
+                  className="feedback-name-input"
+                  placeholder="Your name (optional)"
+                  value={fbName}
+                  onChange={(e) => setFbName(e.target.value)}
+                  maxLength={80}
+                />
+
+                {fbError && <div className="feedback-error">{fbError}</div>}
+
+                <div className="feedback-actions">
+                  <a href={FEEDBACK_VIEW_URL} target="_blank" rel="noreferrer" className="feedback-view-link">See all feedback →</a>
+                  <div className="feedback-btns">
+                    <button className="feedback-cancel-btn" onClick={() => setShowFeedback(false)}>Cancel</button>
+                    <button
+                      className="feedback-submit-btn"
+                      onClick={handleFeedbackSubmit}
+                      disabled={fbSubmitting || !fbText.trim()}
+                    >{fbSubmitting ? "Sending..." : "Submit"}</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
