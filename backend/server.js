@@ -34,6 +34,9 @@ if (!LEONARDO_API_KEY) {
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "25mb" })); // allow large base64 payloads
 
+// Serve local blueprint thumbnail images
+app.use("/api/bp-thumb", express.static(join(__dirname, "public", "bp-thumbs")));
+
 // ─── Helper: upload a base64 image to Leonardo as an init-image ──────────────
 // Returns the uploaded image id to use in guidances.image_reference.
 async function uploadInitImage(base64DataUrl, apiKey) {

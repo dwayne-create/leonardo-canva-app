@@ -182,6 +182,7 @@ interface BpDef {
   textLabel?: string;
   textPlaceholder?: string;
   thumb?: string;         // CDN thumbnail URL (confirmed)
+  thumbVideo?: string;    // looping video thumbnail URL (webm)
   cost: number;           // estimated credits per execution
 }
 
@@ -195,7 +196,7 @@ const CURATED_BLUEPRINTS: BpDef[] = [
   { versionId: "84d68b07-a2d5-49ed-9638-e62cafe8cd95", name: "Dappled Sunlight Relight", desc: "Natural light through leaves",      category: "relight",  icon: "🌿", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-8d72f6.webp" },
   { versionId: "b921c2cd-119b-4d9c-8ac4-af2ad1420fa0", name: "Cool Sunrise Relight",     desc: "Cool blue dawn light",              category: "relight",  icon: "🌄", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-1daa16.webp" },
   { versionId: "45801e6b-223e-42d9-b4a5-2c5792035e45", name: "Soft Azure Relight",       desc: "Soft azure studio light",           category: "relight",  icon: "💙", cost: 40, imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58", thumb: BP_CDN + "thumbnail-129906.webp" },
-  { versionId: "7f50625c-2f97-47df-8890-83d85142e953", name: "Custom Relight",           desc: "Describe your own lighting",        category: "relight",  icon: "💡", cost: 40, imageNodeId: "1e4c5aa9-8d0e-4d92-b3b4-1abe4f25ad32",
+  { versionId: "7f50625c-2f97-47df-8890-83d85142e953", name: "Custom Relight",           desc: "Describe your own lighting",        category: "relight",  icon: "💡", cost: 40, imageNodeId: "1e4c5aa9-8d0e-4d92-b3b4-1abe4f25ad32", thumbVideo: `${BACKEND_URL}/api/bp-thumb/custom-relight.webm`,
     textNodeId: "d4e1ba8e-b20e-4e21-a3af-0cb759111973", textSettingName: "textVariables", textVarName: "lighting",
     textLabel: "Lighting style", textPlaceholder: "e.g., day time, cinematic soft light, golden hour" },
   // ── Portrait ─────────────────────────────────────────────────────────────────
@@ -209,12 +210,12 @@ const CURATED_BLUEPRINTS: BpDef[] = [
     textNodeId: "4b960270-b613-4708-920c-0feabc104325", textSettingName: "textVariables", textVarName: "products",
     textLabel: "Products", textPlaceholder: "e.g., t-shirt, mug, tote bag, hoodie" },
   // ── Creative ─────────────────────────────────────────────────────────────────
-  { versionId: "c1039dee-79e6-44a7-8b29-d96a8ba3b2e6", name: "Old Photo Restoration",   desc: "Restore old & damaged photos",      category: "creative", icon: "🕰️", cost: 50, imageNodeId: "b2e7ac51-5d0b-43cf-b865-bb3c1a8fa6e7", thumb: BP_CDN + "thumbnail-c3ca78.webp" },
-  { versionId: "407530d5-7482-43ff-9784-e8b7fa7c3049", name: "Multiview Perspective",   desc: "Multiple angles, one shot",         category: "creative", icon: "🔄", cost: 80, imageNodeId: "fae3b7c2-1d4a-4c6b-8e29-9f0a1b2c3d4e" },
-  { versionId: "41b0fcc4-01e2-421f-99ed-c38454f1e59c", name: "Image Touch Up",          desc: "Micro-fix specific issues",         category: "creative", icon: "✏️", cost: 40, imageNodeId: "31bba0c1-73a1-4666-92ef-80f7bb0318cd",
+  { versionId: "c1039dee-79e6-44a7-8b29-d96a8ba3b2e6", name: "Old Photo Restoration",   desc: "Restore old & damaged photos",      category: "creative", icon: "🕰️", cost: 50, imageNodeId: "b2e7ac51-5d0b-43cf-b865-bb3c1a8fa6e7", thumbVideo: `${BACKEND_URL}/api/bp-thumb/old-photo-restore.webm` },
+  { versionId: "407530d5-7482-43ff-9784-e8b7fa7c3049", name: "Multiview Perspective",   desc: "Multiple angles, one shot",         category: "creative", icon: "🔄", cost: 80, imageNodeId: "fae3b7c2-1d4a-4c6b-8e29-9f0a1b2c3d4e", thumb: `${BACKEND_URL}/api/bp-thumb/multiview-perspective.avif` },
+  { versionId: "41b0fcc4-01e2-421f-99ed-c38454f1e59c", name: "Image Touch Up",          desc: "Micro-fix specific issues",         category: "creative", icon: "✏️", cost: 40, imageNodeId: "31bba0c1-73a1-4666-92ef-80f7bb0318cd", thumbVideo: `${BACKEND_URL}/api/bp-thumb/image-touchup.webm`,
     textNodeId: "d7c81df7-4d96-4edd-af69-a6b468ec5a5e", textSettingName: "textVariables", textVarName: "microFixes",
     textLabel: "Corrections", textPlaceholder: "e.g., clean up background edges, remove blemish, fix stray hair" },
-  { versionId: "5c09ba53-ae76-4707-89c0-f8f3a3efe297", name: "Background Change",       desc: "Replace the background",            category: "creative", icon: "🖼️", cost: 50, imageNodeId: "7c5f47de-4c34-4c0d-a2ba-4add39f639ae",
+  { versionId: "5c09ba53-ae76-4707-89c0-f8f3a3efe297", name: "Background Change",       desc: "Replace the background",            category: "creative", icon: "🖼️", cost: 50, imageNodeId: "7c5f47de-4c34-4c0d-a2ba-4add39f639ae", thumbVideo: `${BACKEND_URL}/api/bp-thumb/background-change.webm`,
     textNodeId: "1b2fc1de-2c60-4da3-8ef8-dc4b42f3c922", textSettingName: "textVariables", textVarName: "background",
     textLabel: "New background", textPlaceholder: "e.g., gradient blue, mountain landscape, city skyline" },
 ];
@@ -1066,9 +1067,11 @@ export function App() {
                           onClick={() => { setSelectedBp(bp); setBpTextInput(""); setBpError(null); }}
                           disabled={bpRunning}
                         >
-                          {thumbUrl
-                            ? <img src={thumbUrl} alt={bp.name} className="bp-card-thumb" />
-                            : <span className="bp-card-icon">{bp.icon}</span>
+                          {bp.thumbVideo
+                            ? <video src={bp.thumbVideo} className="bp-card-thumb" autoPlay loop muted playsInline />
+                            : thumbUrl
+                              ? <img src={thumbUrl} alt={bp.name} className="bp-card-thumb" />
+                              : <span className="bp-card-icon" data-cat={bp.category}>{bp.icon}</span>
                           }
                           <span className="bp-card-name">{bp.name}</span>
                           <span className="bp-card-desc">{bp.desc}</span>
