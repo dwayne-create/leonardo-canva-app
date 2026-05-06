@@ -815,7 +815,9 @@ app.get("/api/blueprint-execution/:id/generations", async (req, res) => {
     const r = await fetch(`${LEONARDO_BASE}/blueprint-executions/${req.params.id}/generations`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
-    const data = await r.json();
+    const text = await r.text();
+    console.log(`[bp-gen ${req.params.id.slice(0,8)}] HTTP ${r.status} →`, text.slice(0, 800));
+    let data; try { data = JSON.parse(text); } catch { data = { raw: text }; }
     if (!r.ok) return res.status(r.status).json(data);
     res.json(data);
   } catch (e) {

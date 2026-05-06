@@ -18,6 +18,12 @@ body {
   gap: 12px;
 }
 
+/* Spacer to prevent the fixed generate bar from covering the last section */
+.generate-bar-spacer {
+  height: 185px;
+  flex-shrink: 0;
+}
+
 /* Header */
 .header {
   display: flex;
@@ -1843,13 +1849,15 @@ body {
 
 /* ── Sticky generate bar ──────────────────────────────────────── */
 .generate-sticky-bar {
-  position: sticky;
+  position: fixed;
   bottom: 0;
-  z-index: 20;
-  background: var(--bg);
-  padding: 10px 0 4px;
-  border-top: 1px solid rgba(255,255,255,0.07);
-  margin-top: 8px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg, #fff);
+  padding: 10px 12px 12px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
 }
 
 /* ── Blueprint output count pill on card ─────────────────────── */

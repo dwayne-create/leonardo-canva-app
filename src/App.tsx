@@ -800,46 +800,41 @@ export function App() {
       }
       if (!execComplete) throw new Error("Blueprint timed out after 3 minutes. Try again.");
 
-      // Step 3 — Extract generation IDs.
-      // First try the completed status payload, then fall back to /generations endpoint.
+      // Step 3 — Get generation IDs from the dedicated /generations endpoint.
+      // The status payload does NOT reliably contain output gen IDs (it includes
+      // input image UUIDs too, so UUID-scraping picks the wrong thing).
       setBpStatus("Fetching results...");
-      function extractGenIds(obj: any): string[] {
-        if (!obj) return [];
-        // common locations: .generations[], .generatedImages[], .outputs[]
-        const candidates = [
-          ...(obj.generations || []),
-          ...(obj.generatedImages || []),
-          ...(obj.outputs || []),
-        ];
-        return candidates
-          .map((g: any) => g.id || g.generationId || g.generation_id || (typeof g === "string" ? g : null))
-          .filter(Boolean) as string[];
-      }
-      let genIds: string[] = extractGenIds(completedStatusData);
-      console.log("[BP genIds from status]", genIds);
 
-      if (genIds.length === 0) {
-        // Fallback: dedicated /generations endpoint
-        const genListRes = await fetch(
-          `${BACKEND_URL}/api/blueprint-execution/${executionId}/generations`,
-          { headers: buildHeaders() }
-        );
-        if (genListRes.ok) {
-          const genListData = await genListRes.json();
-          console.log("[BP /generations raw]", JSON.stringify(genListData).slice(0, 600));
-          genIds = extractGenIds(genListData.blueprintExecution || genListData) ||
-                   (Array.isArray(genListData) ? genListData.map((g: any) => g.id || g.generationId).filter(Boolean) : []);
-        }
-      }
+      const genListRes = await fetch(
+        `${BACKEND_URL}/api/blueprint-execution/${executionId}/generations`,
+        { headers: buildHeaders() }
+      );
+      const genListRaw = await genListRes.text();
+      console.log("[BP /generations]", genListRaw.slice(0, 800));
 
-      // Last resort: scrape any UUIDs from the status payload that aren't the executionId
-      if (genIds.length === 0 && completedStatusData) {
-        const uuids = JSON.stringify(completedStatusData).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) || [];
-        genIds = uuids.filter((u: string) => u !== executionId).slice(0, 10);
-        console.log("[BP genIds uuid fallback]", genIds);
-      }
+      let genListData: any = {};
+      try { genListData = JSON.parse(genListRaw); } catch { /* ignore */ }
 
-      if (genIds.length === 0) throw new Error("Blueprint completed but returned no generation IDs. Check browser console for debug info.");
+      // Parse every known response shape the API might use
+      const bpNode = genListData.blueprintExecution || genListData;
+      const genIds: string[] = (() => {
+        // Shape A: { blueprintExecution: { generations: [{id}] } }
+        if (Array.isArray(bpNode.generations) && bpNode.generations.length > 0)
+          return bpNode.generations.map((g: any) => g.id || g.generationId || g).filter(Boolean);
+        // Shape B: { generations: [{id}] } top-level
+        if (Array.isArray(genListData.generations) && genListData.generations.length > 0)
+          return genListData.generations.map((g: any) => g.id || g.generationId || g).filter(Boolean);
+        // Shape C: top-level array
+        if (Array.isArray(genListData) && genListData.length > 0)
+          return genListData.map((g: any) => g.id || g.generationId || g).filter(Boolean);
+        // Shape D: generationIds string array
+        if (Array.isArray(bpNode.generationIds)) return bpNode.generationIds;
+        if (Array.isArray(genListData.generationIds)) return genListData.generationIds;
+        return [];
+      })();
+
+      console.log("[BP genIds]", genIds);
+      if (genIds.length === 0) throw new Error(`Blueprint completed but returned no generation IDs.\nDebug: ${genListRaw.slice(0, 300)}`);
 
       // Step 4 — Poll each generation for image URLs, then insert to canvas
       const newImages: LibraryImage[] = [];
@@ -1678,7 +1673,10 @@ export function App() {
         <div className="refs-hint">Optional — guide the style or composition of the output</div>
       </div>
 
-      {/* Prompt + Generate — sticky at bottom */}
+      {/* Spacer so fixed bar doesn't cover content above */}
+      <div className="generate-bar-spacer" />
+
+      {/* Prompt + Generate — fixed at bottom */}
       <div className="generate-sticky-bar">
         <div className="prompt-header">
           <label className="label">PROMPT</label>
