@@ -209,6 +209,9 @@ const CURATED_BLUEPRINTS: BpDef[] = [
   { versionId: "8c1bdc37-6986-4d9b-ab6e-acfd123d51b2", name: "Merch Mock Up",           desc: "T-shirt, mug, tote & more",         category: "product",  icon: "👕", cost: 60, imageNodeId: "414b2497-5dbc-4f47-a2b4-802f8a30603a", thumb: BP_CDN + "thumbnail-e39c67.webp",
     textNodeId: "4b960270-b613-4708-920c-0feabc104325", textSettingName: "textVariables", textVarName: "products",
     textLabel: "Products", textPlaceholder: "e.g., t-shirt, mug, tote bag, hoodie" },
+  { versionId: "9843aef3-7b5b-4e54-9471-cae0cc63d495", name: "Brand Mockup",            desc: "Logo on mugs, tees, billboards",      category: "product",  icon: "🏷️", cost: 120, imageNodeId: "9ac3b1e2-4d7f-4f10-8b2f-9e5a1c2d3e4f", thumb: BP_CDN + "thumbnail-5580a7.webp",
+    textNodeId: "0b5c7344-ccc2-4ee8-9003-8ad3f1a76127", textSettingName: "textVariables", textVarName: "setting1",
+    textLabel: "Where to visualise", textPlaceholder: "e.g., on a coffee mug, a t-shirt, a bus stop" },
   // ── Creative ─────────────────────────────────────────────────────────────────
   { versionId: "c1039dee-79e6-44a7-8b29-d96a8ba3b2e6", name: "Old Photo Restoration",   desc: "Restore old & damaged photos",      category: "creative", icon: "🕰️", cost: 50, imageNodeId: "b2e7ac51-5d0b-43cf-b865-bb3c1a8fa6e7", thumbVideo: `${BACKEND_URL}/api/bp-thumb/old-photo-restore.webm` },
   { versionId: "407530d5-7482-43ff-9784-e8b7fa7c3049", name: "Multiview Perspective",   desc: "Multiple angles, one shot",         category: "creative", icon: "🔄", cost: 80, imageNodeId: "fae3b7c2-1d4a-4c6b-8e29-9f0a1b2c3d4e", thumb: `${BACKEND_URL}/api/bp-thumb/multiview-perspective.avif` },
