@@ -426,7 +426,7 @@ export function App() {
 
   // Feedback
   const [showFeedback,      setShowFeedback]      = useState(false);
-  const [fbCategory,        setFbCategory]        = useState<"Functionality" | "Other">("Functionality");
+  const [fbCategory,        setFbCategory]        = useState<"New Functionality" | "Design" | "Bugs" | "Others">("New Functionality");
   const [fbText,            setFbText]            = useState("");
   const [fbName,            setFbName]            = useState("");
   const [fbSubmitting,      setFbSubmitting]      = useState(false);
@@ -1925,7 +1925,7 @@ export function App() {
             ) : (
               <>
                 <div className="feedback-category-row">
-                  {(["Functionality", "Other"] as const).map((cat) => (
+                  {(["New Functionality", "Design", "Bugs", "Others"] as const).map((cat) => (
                     <button
                       key={cat}
                       className={`feedback-cat-chip ${fbCategory === cat ? "feedback-cat-active" : ""}`}
