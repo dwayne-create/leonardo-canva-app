@@ -102,6 +102,7 @@ interface LibraryImage {
   width: number;
   height: number;
   createdAt: string;
+  isBlueprintOutput?: boolean;
 }
 
 
@@ -166,6 +167,52 @@ async function insertCanvaWordmark(useGradient: boolean) {
 }
 
 const LIB_PICKER_PAGE_SIZE = 18; // 6×3 grid per page
+
+// ─── Blueprint definitions ────────────────────────────────────────────────────
+interface BpDef {
+  versionId: string;
+  name: string;
+  desc: string;
+  category: "relight" | "portrait" | "product" | "creative";
+  icon: string;
+  imageNodeId: string;
+  textNodeId?: string;
+  textSettingName?: string;
+  textLabel?: string;
+  textPlaceholder?: string;
+}
+
+const CURATED_BLUEPRINTS: BpDef[] = [
+  // Relighting
+  { versionId: "04ed2d4b-c28a-4002-b712-bbc89cee592e", name: "Golden Hour Relight",        desc: "Warm late-afternoon glow",              category: "relight",  icon: "🌅", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "ac9941ef-c88a-477e-a93e-6c07552aa41b", name: "Warm Relight",                desc: "Soft warm tones",                       category: "relight",  icon: "🕯️", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "d38ef3ce-3389-408f-a529-43a2a0b02816", name: "Tungsten Moon Relight",       desc: "Moody tungsten night light",            category: "relight",  icon: "🌙", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "84d68b07-a2d5-49ed-9638-e62cafe8cd95", name: "Dappled Sunlight Relight",    desc: "Natural light through leaves",          category: "relight",  icon: "🌿", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "b921c2cd-119b-4d9c-8ac4-af2ad1420fa0", name: "Cool Sunrise Relight",        desc: "Cool blue dawn light",                  category: "relight",  icon: "🌄", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "45801e6b-223e-42d9-b4a5-2c5792035e45", name: "Soft Azure Relight",          desc: "Soft azure studio light",               category: "relight",  icon: "💙", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "7f50625c-2f97-47df-8890-83d85142e953", name: "Custom Relight",              desc: "Describe your own lighting",            category: "relight",  icon: "💡", imageNodeId: "1e4c5aa9-8d0e-4d92-b3b4-1abe4f25ad32",
+    textNodeId: "d4e1ba8e-b20e-4e21-a3af-0cb759111973", textSettingName: "textVariables",
+    textLabel: "Lighting style", textPlaceholder: "e.g., day time, cinematic soft light, golden hour" },
+  // Portrait
+  { versionId: "e994a1b4-db3c-4153-b5be-64eb887b5205", name: "Professional Headshot",       desc: "Studio-quality headshot",               category: "portrait", icon: "🤵", imageNodeId: "c7a4b2f9-8e3d-4e3b-9f0d-2c8f6d2b1a77" },
+  { versionId: "dfba24fe-bb6c-4d16-a48e-cec3a5472a2a", name: "Pop Art Collage Portrait",    desc: "Bold pop art interpretation",           category: "portrait", icon: "🎭", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  { versionId: "a1936b67-902b-4099-9f3a-59ea8606bc15", name: "Indie Garden Polaroid",       desc: "Dreamy polaroid aesthetic",             category: "portrait", icon: "📷", imageNodeId: "4a5d62d9-5d73-4a2f-92ee-3a67d37b2b58" },
+  // Product
+  { versionId: "4b3f9df0-1e21-49ce-be70-8736a41dff88", name: "Product in a Dreamstate",    desc: "Ethereal product placement",            category: "product",  icon: "✨", imageNodeId: "2356018a-7977-4934-a3e8-671a6064c8ce" },
+  { versionId: "0ea4cdc3-0ceb-4728-a2a4-d0a8ba50d042", name: "At-Home Product Shoot",      desc: "Natural lifestyle product photos",      category: "product",  icon: "🏠", imageNodeId: "8e6c9f12-3b5a-4f8d-9c21-7a34b2d5c6e9" },
+  { versionId: "8c1bdc37-6986-4d9b-ab6e-acfd123d51b2", name: "Merch Mock Up",              desc: "T-shirt, mug, tote & more",             category: "product",  icon: "👕", imageNodeId: "414b2497-5dbc-4f47-a2b4-802f8a30603a",
+    textNodeId: "4b960270-b613-4708-920c-0feabc104325", textSettingName: "textVariables",
+    textLabel: "Products", textPlaceholder: "e.g., t-shirt, mug, tote bag, hoodie" },
+  // Creative
+  { versionId: "c1039dee-79e6-44a7-8b29-d96a8ba3b2e6", name: "Old Photo Restoration",      desc: "Restore old & damaged photos",          category: "creative", icon: "🕰️", imageNodeId: "b2e7ac51-5d0b-43cf-b865-bb3c1a8fa6e7" },
+  { versionId: "407530d5-7482-43ff-9784-e8b7fa7c3049", name: "Multiview Perspective",       desc: "Multiple angles, one shot",             category: "creative", icon: "🔄", imageNodeId: "fae3b7c2-1d4a-4c6b-8e29-9f0a1b2c3d4e" },
+  { versionId: "41b0fcc4-01e2-421f-99ed-c38454f1e59c", name: "Image Touch Up",              desc: "Micro-fix specific issues",             category: "creative", icon: "✏️", imageNodeId: "31bba0c1-73a1-4666-92ef-80f7bb0318cd",
+    textNodeId: "d7c81df7-4d96-4edd-af69-a6b468ec5a5e", textSettingName: "textVariables",
+    textLabel: "Corrections", textPlaceholder: "e.g., clean up background edges, remove blemish, fix stray hair" },
+  { versionId: "5c09ba53-ae76-4707-89c0-f8f3a3efe297", name: "Background Change",           desc: "Replace the background",                category: "creative", icon: "🖼️", imageNodeId: "7c5f47de-4c34-4c0d-a2ba-4add39f639ae",
+    textNodeId: "1b2fc1de-2c60-4da3-8ef8-dc4b42f3c922", textSettingName: "textVariables",
+    textLabel: "New background", textPlaceholder: "e.g., gradient blue, mountain landscape, city skyline" },
+];
 
 async function insertIntoCanva(url: string, width: number, height: number) {
   // Route Leonardo CDN URLs through our proxy so Canva can fetch them without
@@ -253,6 +300,14 @@ export function App() {
   const [showStyleModal,  setShowStyleModal]  = useState(false);
   const [sparkSlideImage, setSparkSlideImage] = useState<string | null>(null); // base64 JPEG of pasted slide
 
+  // Blueprint state
+  const [showBpPicker, setShowBpPicker]   = useState(false);
+  const [bpSourceImg,  setBpSourceImg]    = useState<LibraryImage | null>(null);
+  const [selectedBp,   setSelectedBp]    = useState<BpDef | null>(null);
+  const [bpTextInput,  setBpTextInput]   = useState("");
+  const [bpRunning,    setBpRunning]     = useState(false);
+  const [bpStatus,     setBpStatus]      = useState<string | null>(null);
+  const [bpError,      setBpError]       = useState<string | null>(null);
 
   // Key diagnostic state
   const [keyTestResult, setKeyTestResult]   = useState<string | null>(null);
@@ -622,6 +677,125 @@ export function App() {
     }
   };
 
+  // ── Blueprint execution ──────────────────────────────────────────────────────
+  const handleRunBlueprint = useCallback(async () => {
+    if (!bpSourceImg || !selectedBp) return;
+    setBpRunning(true);
+    setBpError(null);
+    setBpStatus("Starting Blueprint...");
+    try {
+      // Build nodeInputs array
+      const nodeInputs: { nodeId: string; settingName: string; value: string }[] = [
+        { nodeId: selectedBp.imageNodeId, settingName: "imageUrl", value: bpSourceImg.url },
+      ];
+      if (selectedBp.textNodeId && bpTextInput.trim()) {
+        nodeInputs.push({
+          nodeId: selectedBp.textNodeId,
+          settingName: selectedBp.textSettingName!,
+          value: bpTextInput.trim(),
+        });
+      }
+
+      // Step 1 — Execute
+      const execRes = await fetch(`${BACKEND_URL}/api/blueprint-execute`, {
+        method: "POST",
+        headers: buildHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ blueprintVersionId: selectedBp.versionId, nodeInputs }),
+      });
+      if (!execRes.ok) {
+        const e = await execRes.json().catch(() => ({}));
+        throw new Error(e.error || `Execute error ${execRes.status}`);
+      }
+      const execData = await execRes.json();
+      const executionId =
+        execData.id ||
+        execData.blueprintExecutionId ||
+        execData.blueprintExecution?.id;
+      if (!executionId) throw new Error("No execution ID returned from Blueprint API");
+
+      // Step 2 — Poll status until COMPLETE
+      setBpStatus("Running Blueprint... (20–90s)");
+      let execComplete = false;
+      for (let i = 0; i < 45; i++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        try {
+          const statusRes = await fetch(
+            `${BACKEND_URL}/api/blueprint-execution/${executionId}/status`,
+            { headers: buildHeaders() }
+          );
+          if (!statusRes.ok) continue;
+          const sd = await statusRes.json();
+          const execStatus = (sd.blueprintExecution || sd).status;
+          if (execStatus === "COMPLETE") { execComplete = true; break; }
+          if (execStatus === "FAILED")   throw new Error("Blueprint execution failed on Leonardo's servers.");
+          const remaining = (45 - i - 1) * 4;
+          setBpStatus(`Running Blueprint... (~${remaining}s remaining)`);
+        } catch (inner: any) {
+          if (inner.message?.includes("Blueprint")) throw inner;
+          // swallow transient network errors and keep polling
+        }
+      }
+      if (!execComplete) throw new Error("Blueprint timed out after 3 minutes. Try again.");
+
+      // Step 3 — Fetch generation IDs
+      setBpStatus("Fetching results...");
+      const genListRes = await fetch(
+        `${BACKEND_URL}/api/blueprint-execution/${executionId}/generations`,
+        { headers: buildHeaders() }
+      );
+      if (!genListRes.ok) throw new Error("Couldn't retrieve Blueprint generation list");
+      const genListData = await genListRes.json();
+      const rawGens = genListData.generations || genListData;
+      const genIds: string[] = Array.isArray(rawGens)
+        ? rawGens.map((g: any) => g.id || g.generationId || g).filter(Boolean)
+        : [];
+      if (genIds.length === 0) throw new Error("Blueprint completed but returned no generation IDs");
+
+      // Step 4 — Poll each generation for image URLs
+      const newImages: LibraryImage[] = [];
+      for (const genId of genIds) {
+        for (let i = 0; i < 30; i++) {
+          await new Promise((r) => setTimeout(r, 3000));
+          const pollRes = await fetch(`${BACKEND_URL}/api/generation/${genId}`, {
+            headers: buildHeaders(),
+          });
+          if (!pollRes.ok) continue;
+          const pollData = await pollRes.json();
+          const gen = pollData.generations_by_pk;
+          if (gen?.status === "COMPLETE") {
+            for (const img of gen.generated_images || []) {
+              newImages.push({
+                id: img.id,
+                generationId: genId,
+                url: img.url,
+                prompt: `[${selectedBp.name}] ${bpSourceImg.prompt}`,
+                width: img.width || bpSourceImg.width,
+                height: img.height || bpSourceImg.height,
+                createdAt: new Date().toISOString(),
+                isBlueprintOutput: true,
+              });
+            }
+            break;
+          }
+          if (gen?.status === "FAILED") break;
+        }
+      }
+
+      if (newImages.length === 0) throw new Error("Blueprint completed but produced no images");
+      setLibraryImages((prev) => [...newImages, ...prev]);
+      setShowBpPicker(false);
+      setBpSourceImg(null);
+      setSelectedBp(null);
+      setBpTextInput("");
+      setBpStatus(null);
+    } catch (err: any) {
+      setBpError(err.message || "Blueprint failed");
+      setBpStatus(null);
+    } finally {
+      setBpRunning(false);
+    }
+  }, [bpSourceImg, selectedBp, bpTextInput, buildHeaders]);
+
   const handleRefUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const remaining = currentModel.maxRefs - refImages.length;
@@ -813,6 +987,73 @@ export function App() {
                 disabled={libPickerSelected.size === 0}
               >
                 Add {libPickerSelected.size > 0 ? libPickerSelected.size : ""} image{libPickerSelected.size !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blueprint picker modal */}
+      {showBpPicker && (
+        <div className="modal-overlay" onClick={() => !bpRunning && setShowBpPicker(false)}>
+          <div className="modal bp-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">✦ Run a Blueprint</div>
+            <p className="bp-picker-sub">Choose an AI workflow to apply to your image.</p>
+
+            {(["relight", "portrait", "product", "creative"] as const).map((cat) => {
+              const catBPs = CURATED_BLUEPRINTS.filter((b) => b.category === cat);
+              const catLabel: Record<string, string> = {
+                relight: "💡 Relighting", portrait: "👤 Portrait",
+                product: "📦 Product",   creative: "🎨 Creative",
+              };
+              return (
+                <div key={cat} className="bp-category">
+                  <div className="bp-category-label">{catLabel[cat]}</div>
+                  <div className="bp-card-grid">
+                    {catBPs.map((bp) => (
+                      <button
+                        key={bp.versionId}
+                        className={`bp-card ${selectedBp?.versionId === bp.versionId ? "bp-card-active" : ""}`}
+                        onClick={() => { setSelectedBp(bp); setBpTextInput(""); setBpError(null); }}
+                        disabled={bpRunning}
+                      >
+                        <span className="bp-card-icon">{bp.icon}</span>
+                        <span className="bp-card-name">{bp.name}</span>
+                        <span className="bp-card-desc">{bp.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {selectedBp?.textNodeId && (
+              <div className="bp-text-row">
+                <label className="label">{selectedBp.textLabel?.toUpperCase()}</label>
+                <input
+                  className="bp-text-input"
+                  type="text"
+                  placeholder={selectedBp.textPlaceholder}
+                  value={bpTextInput}
+                  onChange={(e) => setBpTextInput(e.target.value)}
+                  disabled={bpRunning}
+                  maxLength={250}
+                />
+              </div>
+            )}
+
+            {bpError  && <div className="bp-error">{bpError}</div>}
+            {bpStatus && <div className="status-banner" style={{ marginTop: 8 }}>{bpStatus}</div>}
+
+            <div className="modal-actions" style={{ marginTop: 12 }}>
+              <button className="modal-cancel" onClick={() => setShowBpPicker(false)} disabled={bpRunning}>Cancel</button>
+              <button
+                className={`generate-btn ${bpRunning ? "loading" : ""}`}
+                style={{ flex: 1, padding: "10px", fontSize: "13px" }}
+                onClick={handleRunBlueprint}
+                disabled={bpRunning || !selectedBp || (!!selectedBp?.textNodeId && !bpTextInput.trim())}
+              >
+                {bpRunning ? "Running..." : "✦ Run Blueprint"}
               </button>
             </div>
           </div>
@@ -1139,14 +1380,30 @@ export function App() {
                 <div key={img.id} className="library-item">
                   <div className="library-thumb-wrap">
                     <img src={img.url} alt={img.prompt} className="library-thumb" title={img.prompt} />
-                    <button
-                      className="library-trash"
-                      onClick={() => setConfirmDeleteId(img.id)}
-                      disabled={deletingId === img.id}
-                      title="Delete image"
-                    >
-                      {deletingId === img.id ? "…" : "🗑"}
-                    </button>
+                    {img.isBlueprintOutput && <span className="bp-badge">✦ BP</span>}
+                    <div className="library-thumb-actions">
+                      <button
+                        className="library-action-btn library-bp-btn"
+                        onClick={() => {
+                          setBpSourceImg(img);
+                          setSelectedBp(null);
+                          setBpTextInput("");
+                          setBpError(null);
+                          setBpStatus(null);
+                          setShowBpPicker(true);
+                        }}
+                        disabled={bpRunning}
+                        title="Run a Blueprint on this image"
+                      >✦</button>
+                      <button
+                        className="library-action-btn library-trash-btn"
+                        onClick={() => setConfirmDeleteId(img.id)}
+                        disabled={deletingId === img.id}
+                        title="Delete image"
+                      >
+                        {deletingId === img.id ? "…" : "🗑"}
+                      </button>
+                    </div>
                   </div>
                   <div className="library-prompt">{img.prompt}</div>
                   <button

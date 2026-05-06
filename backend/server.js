@@ -763,8 +763,64 @@ app.get("/api/logo/wordmark-white", (_req, res) => {
   res.send(CANVA_WORDMARK_WHITE);
 });
 
+// ─── Blueprint endpoints ─────────────────────────────────────────────────────
+
+// Execute a Blueprint
+app.post("/api/blueprint-execute", async (req, res) => {
+  const apiKey = resolveKey(req);
+  const { blueprintVersionId, nodeInputs } = req.body;
+  if (!blueprintVersionId || !nodeInputs) {
+    return res.status(400).json({ error: "blueprintVersionId and nodeInputs are required" });
+  }
+  try {
+    const r = await fetch(`${LEONARDO_BASE}/blueprint-executions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        blueprintVersionId,
+        input: { nodeInputs, public: false, collectionIds: [] },
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Poll Blueprint execution status
+app.get("/api/blueprint-execution/:id/status", async (req, res) => {
+  const apiKey = resolveKey(req);
+  try {
+    const r = await fetch(`${LEONARDO_BASE}/blueprint-executions/${req.params.id}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get generation IDs from completed Blueprint execution
+app.get("/api/blueprint-execution/:id/generations", async (req, res) => {
+  const apiKey = resolveKey(req);
+  try {
+    const r = await fetch(`${LEONARDO_BASE}/blueprint-executions/${req.params.id}/generations`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-42", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "v2-rest-43", endpoint: "cloud.leonardo.ai/api/rest/v2" }));
 
 app.listen(PORT, () => {
   console.log(`\n🚀  Leonardo proxy running on http://localhost:${PORT}`);
