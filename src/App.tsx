@@ -1205,12 +1205,10 @@ export function App() {
                               : <span className="bp-card-icon" data-cat={bp.category}>{bp.icon}</span>
                           }
                           <span className="bp-card-name">{bp.name}</span>
-                          <span className="bp-card-desc">
-                            {bp.desc}
-                            {bp.outputCount && bp.outputCount > 1 && (
-                              <span className="bp-output-count">{bp.outputCount} imgs</span>
-                            )}
-                          </span>
+                          <span className="bp-card-desc">{bp.desc}</span>
+                          {bp.outputCount && bp.outputCount > 1 && (
+                            <span className="bp-output-count">{bp.outputCount} imgs</span>
+                          )}
                         </button>
                       );
                     })}
