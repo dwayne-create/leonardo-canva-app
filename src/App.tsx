@@ -224,13 +224,18 @@ const CURATED_BLUEPRINTS: BpDef[] = [
     textLabel: "New background", textPlaceholder: "e.g., gradient blue, mountain landscape, city skyline" },
 ];
 
-/** Load an image URL and return its actual pixel dimensions. */
+/**
+ * Load an image and return its actual pixel dimensions.
+ * Routes through the backend proxy to avoid CORS restrictions and
+ * expired signed CDN URLs that would silently fall back to 512×512.
+ */
 async function probeImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  const proxyUrl = `${BACKEND_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
   return new Promise((resolve) => {
     const img = new window.Image();
     img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => resolve({ width: 512, height: 512 });
-    img.src = url;
+    img.onerror = () => resolve({ width: 0, height: 0 }); // 0 = caller should use fallback
+    img.src = proxyUrl;
   });
 }
 
@@ -728,8 +733,8 @@ export function App() {
                 height = freshImg.height;
               } else {
                 const dims = await probeImageDimensions(freshImg.url);
-                width  = dims.width;
-                height = dims.height;
+                width  = dims.width  || img.width;
+                height = dims.height || img.height;
               }
             }
           }
@@ -900,14 +905,13 @@ export function App() {
           const gen = pollData.generations_by_pk;
           if (gen?.status === "COMPLETE") {
             for (const img of gen.generated_images || []) {
-              // Use API-provided dimensions. If missing, probe the actual image
-              // so we don't inherit source dimensions and distort the output.
+              // Priority: API dims → probe via proxy → source image dims as last resort
               let w = img.width as number;
               let h = img.height as number;
               if (!w || !h) {
                 const dims = await probeImageDimensions(img.url);
-                w = dims.width;
-                h = dims.height;
+                w = dims.width  || bpSourceImg.width;
+                h = dims.height || bpSourceImg.height;
               }
               newImages.push({
                 id: img.id,
