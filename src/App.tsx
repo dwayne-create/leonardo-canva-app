@@ -41,10 +41,10 @@ function validateGptImage2(w: number, h: number): string[] {
 // creditsPerImage: base API credit cost at 1024×1024 (1MP). GPT Image 2 scales with pixel area;
 // others use a flat rate per image. Quality multipliers for GPT Image 2: low×0.5, medium×1, high×2.
 const MODELS = [
-  { id: "gpt-image-2",    name: "GPT Image 2",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 1376, multipleOf: 16, hasQuality: true,  creditsPerImage: 118, scalesWithRes: true  },
-  { id: "gemini-image-2", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4, validDimensions: NB_PRO_DIMS,                        minDim: 672,  maxDim: 5504, multipleOf: 1,  hasQuality: false, creditsPerImage: 50,  scalesWithRes: false },
-  { id: "seedream-4.5",   name: "Seedream 4.5",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 4096, multipleOf: 8,  hasQuality: false, creditsPerImage: 50,  scalesWithRes: false },
-  { id: "flux-pro-2.0",   name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false, creditsPerImage: 25,  scalesWithRes: false },
+  { id: "gpt-image-2",    name: "GPT Image 2",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 1376, multipleOf: 16, hasQuality: true,  creditsPerImage: 118, scalesWithRes: true,  presetsOnly: true  },
+  { id: "gemini-image-2", name: "Nano Banana Pro", maxRefs: 6, maxImages: 4, validDimensions: NB_PRO_DIMS,                        minDim: 672,  maxDim: 5504, multipleOf: 1,  hasQuality: false, creditsPerImage: 50,  scalesWithRes: false, presetsOnly: false },
+  { id: "seedream-4.5",   name: "Seedream 4.5",    maxRefs: 6, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 512,  maxDim: 4096, multipleOf: 8,  hasQuality: false, creditsPerImage: 50,  scalesWithRes: false, presetsOnly: false },
+  { id: "flux-pro-2.0",   name: "Flux.2 Pro",      maxRefs: 4, maxImages: 4, validDimensions: undefined as number[] | undefined, minDim: 256,  maxDim: 1440, multipleOf: 8,  hasQuality: false, creditsPerImage: 25,  scalesWithRes: false, presetsOnly: false },
 ];
 
 // Estimate API credit cost for a generation
@@ -78,6 +78,22 @@ const SOCIAL_SIZES = [
   { label: "Twitter",   w: 1200, h: 896  },
   { label: "Facebook",  w: 1376, h: 768  },
 ];
+
+// GPT Image 2 only accepts these exact preset dimension pairs from Leonardo's API.
+// Custom slider values return VALIDATION_ERROR regardless of being valid multiples of 16.
+// Non-matching presets (4:3, Instagram, Twitter) are remapped to the nearest valid ratio.
+const GPT2_FIXED_DIMS: Record<string, { w: number; h: number }> = {
+  "16:9":      { w: 1376, h: 768  },
+  "1:1":       { w: 1024, h: 1024 },
+  "2:3":       { w: 848,  h: 1264 },
+  "3:2":       { w: 1264, h: 848  },
+  "4:3":       { w: 1264, h: 848  }, // → remapped to 3:2
+  "9:16":      { w: 768,  h: 1376 },
+  "Instagram": { w: 1024, h: 1024 }, // → remapped to 1:1 (square)
+  "TikTok":    { w: 768,  h: 1376 }, // exact 9:16
+  "Twitter":   { w: 1264, h: 848  }, // → remapped to 3:2 (landscape)
+  "Facebook":  { w: 1376, h: 768  }, // exact 16:9
+};
 
 const QUALITY_OPTIONS = ["low", "medium", "high"] as const;
 type Quality = typeof QUALITY_OPTIONS[number];
@@ -650,7 +666,13 @@ export function App() {
     setCount((prev) => Math.min(prev, newModel.maxImages));
 
     // Snap dimensions if this model requires specific values
-    if (newModel.validDimensions) {
+    if (newModel.presetsOnly) {
+      // GPT Image 2: always lock to a valid preset — default to 16:9 on model switch
+      const dims = GPT2_FIXED_DIMS["16:9"];
+      setWidth(dims.w);
+      setHeight(dims.h);
+      setActivePreset("16:9");
+    } else if (newModel.validDimensions) {
       setWidth((prev) => snapToValid(prev, newModel.validDimensions!));
       setHeight((prev) => snapToValid(prev, newModel.validDimensions!));
     }
@@ -1013,9 +1035,17 @@ export function App() {
 
   const selectPreset = useCallback((label: string, w: number, h: number) => {
     setActivePreset(label);
-    setWidth(w);
-    setHeight(h);
-  }, []);
+    // For presetsOnly models (GPT Image 2), always use the fixed dimension map
+    // to guarantee only API-valid dimension pairs are used regardless of pill values
+    const gpt2Dims = GPT2_FIXED_DIMS[label];
+    if (gpt2Dims && currentModel.presetsOnly) {
+      setWidth(gpt2Dims.w);
+      setHeight(gpt2Dims.h);
+    } else {
+      setWidth(w);
+      setHeight(h);
+    }
+  }, [currentModel.presetsOnly]);
 
   const pollForImages = async (generationId: string): Promise<string[]> => {
     for (let i = 0; i < 30; i++) {
@@ -1756,8 +1786,12 @@ export function App() {
         </div>
       </div>
 
-      {/* Width / Height — dropdowns for grid models, sliders for range models */}
-      {currentModel.validDimensions ? (
+      {/* Width / Height — presets-only for GPT Image 2, dropdowns for grid models, sliders for range models */}
+      {currentModel.presetsOnly ? (
+        <div className="section">
+          <div className="size-info">{width} × {height} — {((width * height) / 1000000).toFixed(2)} MP · Use pills above to change size</div>
+        </div>
+      ) : currentModel.validDimensions ? (
         <div className="section">
           <div className="slider-row"><label className="label">WIDTH</label><span className="slider-val">{width}</span></div>
           <select className="select" value={width} onChange={(e) => { setWidth(+e.target.value); setActivePreset("custom"); }} disabled={isGenerating}>
