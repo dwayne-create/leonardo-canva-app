@@ -1067,7 +1067,12 @@ export function App() {
       fetchBalance(); // refresh balance after generation
       setStatus("Done! Adding to slide...");
       try {
-        await insertIntoCanva(urls[0], width, height);
+        // Probe actual dims — Leonardo may round custom sizes to its nearest
+        // supported resolution, so state width/height may not match the output.
+        const genDims = await probeImageDimensions(urls[0]);
+        const genW = genDims.width  || width;
+        const genH = genDims.height || height;
+        await insertIntoCanva(urls[0], genW, genH);
         // If Canva Brand is on, place the wordmark logo as a separate overlay
         if (canvaBrand) {
           try {
