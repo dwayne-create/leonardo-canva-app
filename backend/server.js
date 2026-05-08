@@ -76,14 +76,14 @@ async function uploadInitImage(base64DataUrl, apiKey) {
 //   gpt-image-2       GPT Image 2       (quality: LOW/MEDIUM/HIGH; no ref strength)
 //   gemini-image-2    Nano Banana Pro   (grid dims; ref strength: LOW/MID/HIGH)
 //   seedream-4.5      Seedream 4.5      (mod-8, 512-4096; ref strength)
-//   flux-2-pro        Flux.2 Pro        (mod-8, 256-1440; ref strength)
+//   flux-pro-2.0      Flux.2 Pro        (mod-8, 256-1440; ref strength)
 
 // Models where quality param (LOW/MEDIUM/HIGH) is supported
 const MODELS_WITH_QUALITY = new Set(["gpt-image-2", "gpt-image-1.5", "ideogram-v3.0"]);
 
 // Models that support image_reference strength inside guidances
 // GPT Image 2 does NOT use strength — omit it for that model
-const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "seedream-4.5", "seedream-4.0", "flux-2-pro", "ideogram-v3.0"]);
+const MODELS_WITH_REF_STRENGTH = new Set(["gemini-image-2", "seedream-4.5", "seedream-4.0", "flux-pro-2.0", "ideogram-v3.0"]);
 
 app.post("/api/generate", async (req, res) => {
   const { modelId, prompt, width, height, num_images = 1, quality, refImages, refImageIds } = req.body;
@@ -509,7 +509,7 @@ const MODEL_STYLE_HINTS = {
   "gpt-image-2":    "photorealistic photography with rich detail and precise lighting",
   "gemini-image-2": "vibrant, painterly illustration with expressive color",
   "seedream-4.5":   "cinematic digital art with atmospheric depth",
-  "flux-2-pro":     "crisp, high-fidelity professional imagery",
+  "flux-pro-2.0":   "crisp, high-fidelity professional imagery",
 };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
