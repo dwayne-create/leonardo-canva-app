@@ -1096,7 +1096,12 @@ export function App() {
     setIsGenerating(true);
     setStatus("Adding to slide...");
     try {
-      await insertIntoCanva(url, width, height);
+      // Probe actual image dimensions — avoids squashing when the user changes
+      // dimension settings after generating (state width/height no longer match).
+      const dims = await probeImageDimensions(url);
+      const finalW = dims.width  || width;
+      const finalH = dims.height || height;
+      await insertIntoCanva(url, finalW, finalH);
       setStatus("✓ Added!");
     } catch (err: any) {
       setError("Couldn't add to slide: " + err.message);
