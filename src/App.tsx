@@ -1068,10 +1068,16 @@ export function App() {
       setStatus("Done! Adding to slide...");
       try {
         // Probe actual dims — Leonardo may round custom sizes to its nearest
-        // supported resolution, so state width/height may not match the output.
+        // supported resolution. Scale probed dims proportionally to match the
+        // user's requested visual size while keeping correct aspect ratio.
         const genDims = await probeImageDimensions(urls[0]);
-        const genW = genDims.width  || width;
-        const genH = genDims.height || height;
+        let genW = width;
+        let genH = height;
+        if (genDims.width && genDims.height) {
+          const scale = Math.max(width / genDims.width, height / genDims.height);
+          genW = Math.round(genDims.width  * scale);
+          genH = Math.round(genDims.height * scale);
+        }
         await insertIntoCanva(urls[0], genW, genH);
         // If Canva Brand is on, place the wordmark logo as a separate overlay
         if (canvaBrand) {
@@ -1102,10 +1108,16 @@ export function App() {
     setStatus("Adding to slide...");
     try {
       // Probe actual image dimensions — avoids squashing when the user changes
-      // dimension settings after generating (state width/height no longer match).
+      // dimension settings after generating. Scale to user's requested visual
+      // size while preserving the image's true aspect ratio.
       const dims = await probeImageDimensions(url);
-      const finalW = dims.width  || width;
-      const finalH = dims.height || height;
+      let finalW = width;
+      let finalH = height;
+      if (dims.width && dims.height) {
+        const scale = Math.max(width / dims.width, height / dims.height);
+        finalW = Math.round(dims.width  * scale);
+        finalH = Math.round(dims.height * scale);
+      }
       await insertIntoCanva(url, finalW, finalH);
       setStatus("✓ Added!");
     } catch (err: any) {
